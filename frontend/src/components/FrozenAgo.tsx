@@ -1,3 +1,5 @@
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 interface Props {
   frozenDate: string; // YYYY-MM
 }
@@ -11,19 +13,17 @@ export default function FrozenAgo({ frozenDate }: Props) {
     (now.getFullYear() - frozen.getFullYear()) * 12 +
     (now.getMonth() - frozen.getMonth());
 
-  let label: string;
+  const dateLabel = `${MONTHS[month - 1]} ${year}`;
+
+  let relLabel: string;
   if (months <= 0) {
-    label = 'This month';
-  } else if (months === 1) {
-    label = '1 month ago';
+    relLabel = 'this month';
   } else if (months < 12) {
-    label = `${months} months ago`;
+    relLabel = `${months}mo ago`;
   } else {
     const years = Math.floor(months / 12);
     const rem = months % 12;
-    label = years === 1 ? '1 year' : `${years} years`;
-    if (rem > 0) label += ` ${rem}mo`;
-    label += ' ago';
+    relLabel = `${years}y${rem > 0 ? ` ${rem}mo` : ''} ago`;
   }
 
   const isOld = months >= 6;
@@ -39,7 +39,7 @@ export default function FrozenAgo({ frozenDate }: Props) {
           : 'text-gray-400'
       }`}
     >
-      {label}
+      {dateLabel} · {relLabel}
     </span>
   );
 }
