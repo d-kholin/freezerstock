@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, X, Snowflake } from 'lucide-react';
+import { Search, X, Snowflake } from 'lucide-react';
 import { api } from '../api';
 import type { Item } from '../types';
 import CategoryGroup from '../components/CategoryGroup';
@@ -10,10 +10,14 @@ import EditItemModal from '../components/EditItemModal';
 import UseToast, { type ToastData } from '../components/UseToast';
 import AgingBanner from '../components/AgingBanner';
 
-export default function InventoryPage() {
+interface Props {
+  showAdd: boolean;
+  setShowAdd: (v: boolean) => void;
+}
+
+export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
   const [processItem, setProcessItem] = useState<Item | null>(null);
   const [editItem, setEditItem] = useState<Item | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
@@ -102,18 +106,9 @@ export default function InventoryPage() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="shrink-0 bg-white border-b border-gray-100 safe-top">
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <div className="flex items-center gap-2">
-            <Snowflake className="w-6 h-6 text-blue-500" />
-            <h1 className="text-xl font-bold text-gray-900">FreezerStock</h1>
-          </div>
-          <button
-            onClick={() => setShowAdd(true)}
-            aria-label="Add item"
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
+        <div className="flex items-center px-4 pt-4 pb-2 gap-2">
+          <Snowflake className="w-6 h-6 text-blue-500" />
+          <h1 className="text-xl font-bold text-gray-900">FreezerStock</h1>
         </div>
 
         {/* Search */}
