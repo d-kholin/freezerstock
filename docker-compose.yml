@@ -1,8 +1,8 @@
 services:
   backend:
     build: ./backend
-    ports:
-      - "3001:3001"
+    # No host port — reachable only via the internal Docker network.
+    # nginx proxies /api/ to http://backend:3001 directly.
     volumes:
       - freezerstock-data:/app/data
     environment:
@@ -19,7 +19,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_healthy
