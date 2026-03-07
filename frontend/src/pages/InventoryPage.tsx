@@ -158,7 +158,13 @@ export default function InventoryPage() {
           </div>
         ) : (
           <>
-            {!search && <AgingBanner items={items} onEdit={setEditItem} />}
+            {!search && (
+              <AgingBanner
+                items={items}
+                onEdit={setEditItem}
+                onUse={(item) => useMut.mutate({ item, amount: 1 })}
+              />
+            )}
             {search && (
               <div className="px-4 py-2 text-sm text-gray-500">
                 {items.length} item type{items.length !== 1 ? 's' : ''} · {totalItems} total

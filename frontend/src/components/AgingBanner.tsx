@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Minus } from 'lucide-react';
 import type { Item } from '../types';
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function monthsAgo(frozenDate: string): number {
   const [year, month] = frozenDate.split('-').map(Number);
@@ -11,9 +13,10 @@ function monthsAgo(frozenDate: string): number {
 interface Props {
   items: Item[];
   onEdit: (item: Item) => void;
+  onUse: (item: Item) => void;
 }
 
-export default function AgingBanner({ items, onEdit }: Props) {
+export default function AgingBanner({ items, onEdit, onUse }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const old = items
@@ -50,22 +53,41 @@ export default function AgingBanner({ items, onEdit }: Props) {
             {old.map((item) => {
               const name = item.displayName || item.customName || item.itemTypeName || 'Unknown';
               const months = monthsAgo(item.frozenDate);
+              const [year, month] = item.frozenDate.split('-').map(Number);
+              const dateLabel = `${MONTHS[month - 1]} ${year}`;
               return (
-                <button
+                <div
                   key={item.id}
-                  onClick={() => onEdit(item)}
-                  className="shrink-0 flex flex-col items-start bg-white border border-amber-200 rounded-lg px-3 py-2 min-w-[120px] max-w-[150px] text-left hover:bg-amber-50 active:bg-amber-100 transition-colors"
+                  className="shrink-0 flex flex-col bg-white border border-amber-200 rounded-lg min-w-[120px] max-w-[150px] overflow-hidden"
                 >
-                  <span className="text-sm font-medium text-gray-800 truncate w-full">{name}</span>
-                  {item.sizeLabel && (
-                    <span className="text-xs text-gray-400 truncate w-full">{item.sizeLabel}</span>
-                  )}
-                  <span className="text-xs font-semibold text-amber-600 mt-1">
+                  {/* Info area — tap to edit */}
+                  <button
+                    onClick={() => onEdit(item)}
+                    className="flex flex-col items-start px-3 pt-2 pb-1 text-left hover:bg-amber-50 active:bg-amber-100 transition-colors w-full"
+                  >
+                    <span className="text-xs text-gray-400 truncate w-full">{item.categoryName}</span>
+                    <span className="text-sm font-medium text-gray-800 truncate w-full">{name}</span>
+                    {item.sizeLabel && (
+                      <span className="text-xs text-gray-400 truncate w-full">{item.sizeLabel}</span>
+                    )}
+                    <span className="text-xs font-semibold text-amber-700 mt-1">{dateLabel}</span>
+                  <span className="text-xs text-amber-500">
                     {months >= 12
                       ? `${Math.floor(months / 12)}y ${months % 12 > 0 ? `${months % 12}mo` : ''}`
                       : `${months}mo`} ago
                   </span>
-                </button>
+                  </button>
+
+                  {/* Consume button */}
+                  <button
+                    onClick={() => onUse(item)}
+                    aria-label={`Use one ${name}`}
+                    className="flex items-center justify-center gap-1 w-full py-1.5 border-t border-amber-100 text-xs font-medium text-amber-700 hover:bg-amber-50 active:bg-amber-100 transition-colors"
+                  >
+                    <Minus className="w-3 h-3" />
+                    Use 1
+                  </button>
+                </div>
               );
             })}
           </div>
