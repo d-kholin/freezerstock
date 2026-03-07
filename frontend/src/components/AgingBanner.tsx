@@ -4,6 +4,17 @@ import type { Item } from '../types';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+const PHRASES = [
+  "Things to use next!",
+  "Don't forget about these!",
+  "Use these soon!",
+  "Getting a bit old in there…",
+  "These have been waiting!",
+  "Freezer burn incoming!",
+  "Time to dig these out!",
+  "First in, first out!",
+];
+
 function monthsAgo(frozenDate: string): number {
   const [year, month] = frozenDate.split('-').map(Number);
   const now = new Date();
@@ -18,6 +29,7 @@ interface Props {
 
 export default function AgingBanner({ items, onEdit, onUse }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [phrase] = useState(() => PHRASES[Math.floor(Math.random() * PHRASES.length)]);
 
   const old = items
     .filter((i) => monthsAgo(i.frozenDate) >= 6)
@@ -35,9 +47,7 @@ export default function AgingBanner({ items, onEdit, onUse }: Props) {
       >
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-          <span className="text-sm font-semibold text-amber-700">
-            {old.length} item{old.length !== 1 ? 's' : ''} need attention
-          </span>
+          <span className="text-sm font-semibold text-amber-700">{phrase}</span>
         </div>
         {expanded ? (
           <ChevronUp className="w-4 h-4 text-amber-500 shrink-0" />
