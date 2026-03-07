@@ -37,6 +37,7 @@ export const history = sqliteTable('history', {
   action: text('action').notNull(), // 'used' | 'processed' | 'added'
   itemId: integer('item_id'),
   itemName: text('item_name').notNull(),
+  categoryName: text('category_name'),
   quantity: integer('quantity').notNull(),
   details: text('details'), // JSON string
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),

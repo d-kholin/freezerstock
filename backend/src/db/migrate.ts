@@ -66,6 +66,11 @@ export async function runMigrations() {
     },
   ]);
 
+  // Add columns introduced after initial schema (safe to re-run)
+  try {
+    await client.execute({ sql: 'ALTER TABLE history ADD COLUMN category_name TEXT', args: [] });
+  } catch { /* column already exists */ }
+
   console.log('Migrations complete');
 }
 

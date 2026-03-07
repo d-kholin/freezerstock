@@ -58,6 +58,8 @@ router.post('/', async (req, res) => {
       itemName = type?.name ?? 'Unknown';
     }
 
+    const [cat] = await db.select().from(categories).where(eq(categories.id, Number(categoryId)));
+
     const [item] = await db
       .insert(items)
       .values({
@@ -75,6 +77,7 @@ router.post('/', async (req, res) => {
       action: 'added',
       itemId: item.id,
       itemName: itemName ?? 'Unknown',
+      categoryName: cat?.name ?? null,
       quantity: item.quantity,
     });
 
@@ -110,15 +113,16 @@ router.delete('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
     const [row] = await db
-      .select({ item: items, itemType: itemTypes })
+      .select({ item: items, itemType: itemTypes, category: categories })
       .from(items)
       .leftJoin(itemTypes, eq(items.itemTypeId, itemTypes.id))
+      .leftJoin(categories, eq(items.categoryId, categories.id))
       .where(eq(items.id, id));
 
     if (!row) return res.status(404).json({ error: 'Item not found' });
 
     const itemName = row.item.customName || row.itemType?.name || 'Unknown';
-    await db.insert(history).values({ action: 'used', itemId: id, itemName, quantity: row.item.quantity });
+    await db.insert(history).values({ action: 'used', itemId: id, itemName, categoryName: row.category?.name ?? null, quantity: row.item.quantity });
     await db.delete(items).where(eq(items.id, id));
     res.json({ success: true });
   } catch (err) {
@@ -132,9 +136,10 @@ router.post('/:id/use', async (req, res) => {
     const amount = Number(req.body.amount) || 1;
 
     const [row] = await db
-      .select({ item: items, itemType: itemTypes })
+      .select({ item: items, itemType: itemTypes, category: categories })
       .from(items)
       .leftJoin(itemTypes, eq(items.itemTypeId, itemTypes.id))
+      .leftJoin(categories, eq(items.categoryId, categories.id))
       .where(eq(items.id, id));
 
     if (!row) return res.status(404).json({ error: 'Item not found' });
@@ -144,7 +149,7 @@ router.post('/:id/use', async (req, res) => {
 
     const [historyEntry] = await db
       .insert(history)
-      .values({ action: 'used', itemId: id, itemName, quantity: amount })
+      .values({ action: 'used', itemId: id, itemName, categoryName: row.category?.name ?? null, quantity: amount })
       .returning();
 
     if (newQty <= 0) {
@@ -231,9 +236,10 @@ router.post('/:id/process', async (req, res) => {
     if (!outputs?.length) return res.status(400).json({ error: 'outputs array is required' });
 
     const [row] = await db
-      .select({ item: items, itemType: itemTypes })
+      .select({ item: items, itemType: itemTypes, category: categories })
       .from(items)
       .leftJoin(itemTypes, eq(items.itemTypeId, itemTypes.id))
+      .leftJoin(categories, eq(items.categoryId, categories.id))
       .where(eq(items.id, id));
 
     if (!row) return res.status(404).json({ error: 'Item not found' });
@@ -262,6 +268,7 @@ router.post('/:id/process', async (req, res) => {
       action: 'processed',
       itemId: id,
       itemName: sourceName,
+      categoryName: row.category?.name ?? null,
       quantity: row.item.quantity,
       details: JSON.stringify({ outputs: created.map((c) => c.id) }),
     });

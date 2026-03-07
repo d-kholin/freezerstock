@@ -35,6 +35,7 @@ export interface HistoryEntry {
   action: 'used' | 'processed' | 'added';
   itemId: number | null;
   itemName: string;
+  categoryName: string | null;
   quantity: number;
   details: string | null;
   createdAt: string;

@@ -72,8 +72,11 @@ export default function HistoryPage() {
                     >
                       {actionLabel(entry.action)}
                     </span>
+                    {entry.categoryName && (
+                      <span className="text-xs text-gray-400">{entry.categoryName}</span>
+                    )}
                     <span className="text-sm text-gray-500">
-                      {entry.quantity} {entry.quantity === 1 ? 'item' : 'items'}
+                      · {entry.quantity} {entry.quantity === 1 ? 'item' : 'items'}
                     </span>
                     <span className="text-xs text-gray-400 ml-auto">{formatTime(entry.createdAt)}</span>
                   </div>
