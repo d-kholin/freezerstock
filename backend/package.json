@@ -1,0 +1,24 @@
+{
+  "name": "freezerstock-backend",
+  "version": "1.0.0",
+  "description": "FreezerStock API server",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.6.2",
+    "cors": "^2.8.5",
+    "drizzle-orm": "^0.30.8",
+    "express": "^4.18.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.30",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.3"
+  }
+}
