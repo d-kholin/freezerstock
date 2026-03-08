@@ -59,7 +59,7 @@ In production (Docker), Nginx serves the built frontend and proxies `/api` to th
   // month from frozenDate is 1-indexed; getMonth() is 0-indexed
   ```
 - **Item identity**: each row is a "type+batch" (e.g., "2lb chicken breasts frozen Feb"). `itemTypeId` is null for custom items; `customName` is null for typed items. `displayName = customName || itemType.name`.
-- **Undo** (`POST /history/:id/restore`): reverses eligible history actions (`used`/`added`) and removes the restored history entry. `processed` is not restorable.
+- **Undo** (`POST /history/:id/restore`): reverses eligible history actions (`used`/`removed`/`added`) and removes the restored history entry. `processed` is not restorable.
 
 ### TanStack Query conventions
 - `queryKey: ['items', search]` — inventory page (search-filtered)

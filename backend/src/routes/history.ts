@@ -15,6 +15,16 @@ interface ItemSnapshot {
   notes: string | null;
 }
 
+function parseSnapshot(details: string | null): ItemSnapshot | null {
+  if (!details) return null;
+  try {
+    const parsed = JSON.parse(details) as { snapshot?: ItemSnapshot };
+    return parsed.snapshot ?? null;
+  } catch {
+    return null;
+  }
+}
+
 router.get('/', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
@@ -52,6 +62,40 @@ router.post('/:id/restore', async (req, res) => {
       return res.json({ restored: 'added', historyId });
     }
 
+    if (entry.action === 'removed') {
+      const snapshot = parseSnapshot(entry.details);
+      if (!snapshot) {
+        return res.status(409).json({ error: 'This remove entry cannot be undone because required metadata is missing' });
+      }
+
+      if (entry.itemId) {
+        const [existing] = await db.select().from(items).where(eq(items.id, entry.itemId));
+        if (existing) {
+          return res.status(409).json({ error: 'Item already exists; remove undo not needed' });
+        }
+      }
+
+      const restoreValues: typeof items.$inferInsert = {
+        categoryId: Number(snapshot.categoryId),
+        itemTypeId: snapshot.itemTypeId ? Number(snapshot.itemTypeId) : null,
+        customName: snapshot.customName || null,
+        quantity: Number(snapshot.quantity),
+        sizeLabel: snapshot.sizeLabel || null,
+        frozenDate: snapshot.frozenDate,
+        notes: snapshot.notes || null,
+      };
+
+      if (entry.itemId) restoreValues.id = Number(entry.itemId);
+
+      const [restored] = await db
+        .insert(items)
+        .values(restoreValues)
+        .returning();
+
+      await db.delete(history).where(eq(history.id, historyId));
+      return res.json({ restored: 'removed', historyId, item: restored });
+    }
+
     if (entry.action === 'used') {
       const amount = Number(entry.quantity) || 0;
       if (amount <= 0) {
@@ -72,32 +116,30 @@ router.post('/:id/restore', async (req, res) => {
         }
       }
 
-      let snapshot: ItemSnapshot | null = null;
-
-      if (entry.details) {
-        try {
-          const parsed = JSON.parse(entry.details) as { snapshot?: ItemSnapshot };
-          snapshot = parsed.snapshot ?? null;
-        } catch {
-          snapshot = null;
-        }
-      }
+      const snapshot = parseSnapshot(entry.details);
 
       if (!snapshot) {
-        return res.status(409).json({ error: 'Missing snapshot; cannot restore this use entry' });
+        return res.status(409).json({ error: 'This entry cannot be undone because it was created before undo metadata was tracked' });
+      }
+
+      const restoreValues: typeof items.$inferInsert = {
+        categoryId: Number(snapshot.categoryId),
+        itemTypeId: snapshot.itemTypeId ? Number(snapshot.itemTypeId) : null,
+        customName: snapshot.customName || null,
+        quantity: Number(snapshot.quantity),
+        sizeLabel: snapshot.sizeLabel || null,
+        frozenDate: snapshot.frozenDate,
+        notes: snapshot.notes || null,
+      };
+
+      if (entry.itemId) {
+        const [sameId] = await db.select().from(items).where(eq(items.id, entry.itemId));
+        if (!sameId) restoreValues.id = Number(entry.itemId);
       }
 
       const [restored] = await db
         .insert(items)
-        .values({
-          categoryId: Number(snapshot.categoryId),
-          itemTypeId: snapshot.itemTypeId ? Number(snapshot.itemTypeId) : null,
-          customName: snapshot.customName || null,
-          quantity: Number(snapshot.quantity),
-          sizeLabel: snapshot.sizeLabel || null,
-          frozenDate: snapshot.frozenDate,
-          notes: snapshot.notes || null,
-        })
+        .values(restoreValues)
         .returning();
 
       await db.delete(history).where(eq(history.id, historyId));

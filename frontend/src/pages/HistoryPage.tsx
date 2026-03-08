@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { History, PackagePlus, PackageMinus, Scissors, RotateCcw } from 'lucide-react';
+import { History, PackagePlus, PackageMinus, Scissors, RotateCcw, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import type { HistoryEntry } from '../types';
 
 function ActionIcon({ action }: { action: HistoryEntry['action'] }) {
   if (action === 'added') return <PackagePlus className="w-5 h-5 text-green-500" />;
+  if (action === 'removed') return <Trash2 className="w-5 h-5 text-orange-500" />;
   if (action === 'processed') return <Scissors className="w-5 h-5 text-purple-500" />;
   return <PackageMinus className="w-5 h-5 text-red-400" />;
 }
 
 function actionLabel(action: HistoryEntry['action']) {
   if (action === 'added') return 'Added';
+  if (action === 'removed') return 'Removed';
   if (action === 'processed') return 'Processed';
   return 'Used';
 }
@@ -47,7 +49,8 @@ export default function HistoryPage() {
     },
   });
 
-  const canRestore = (action: HistoryEntry['action']) => action === 'used' || action === 'added';
+  const canRestore = (action: HistoryEntry['action']) =>
+    action === 'used' || action === 'removed' || action === 'added';
 
   return (
     <div className="flex flex-col h-full">
@@ -88,6 +91,8 @@ export default function HistoryPage() {
                       className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                         entry.action === 'added'
                           ? 'bg-green-50 text-green-600'
+                          : entry.action === 'removed'
+                          ? 'bg-orange-50 text-orange-600'
                           : entry.action === 'processed'
                           ? 'bg-purple-50 text-purple-600'
                           : 'bg-red-50 text-red-500'

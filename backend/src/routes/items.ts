@@ -122,7 +122,24 @@ router.delete('/:id', async (req, res) => {
     if (!row) return res.status(404).json({ error: 'Item not found' });
 
     const itemName = row.item.customName || row.itemType?.name || 'Unknown';
-    await db.insert(history).values({ action: 'used', itemId: id, itemName, categoryName: row.category?.name ?? null, quantity: row.item.quantity });
+    const snapshot = {
+      categoryId: row.item.categoryId,
+      itemTypeId: row.item.itemTypeId,
+      customName: row.item.customName,
+      quantity: row.item.quantity,
+      sizeLabel: row.item.sizeLabel,
+      frozenDate: row.item.frozenDate,
+      notes: row.item.notes,
+    };
+
+    await db.insert(history).values({
+      action: 'removed',
+      itemId: id,
+      itemName,
+      categoryName: row.category?.name ?? null,
+      quantity: row.item.quantity,
+      details: JSON.stringify({ snapshot }),
+    });
     await db.delete(items).where(eq(items.id, id));
     res.json({ success: true });
   } catch (err) {

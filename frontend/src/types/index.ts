@@ -32,7 +32,7 @@ export interface Item {
 
 export interface HistoryEntry {
   id: number;
-  action: 'used' | 'processed' | 'added';
+  action: 'used' | 'removed' | 'processed' | 'added';
   itemId: number | null;
   itemName: string;
   categoryName: string | null;

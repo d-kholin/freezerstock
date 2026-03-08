@@ -150,7 +150,7 @@ items (
 -- History log for add/remove actions
 history (
   id            INTEGER PRIMARY KEY,
-  action        TEXT NOT NULL,       -- 'used', 'added'
+  action        TEXT NOT NULL,       -- 'used', 'removed', 'added'
   item_id       INTEGER NULL,
   item_name     TEXT NOT NULL,       -- denormalized for persistence
   quantity      INTEGER NOT NULL,

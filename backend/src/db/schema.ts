@@ -34,7 +34,7 @@ export const items = sqliteTable('items', {
 
 export const history = sqliteTable('history', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  action: text('action').notNull(), // 'used' | 'added' (legacy rows may include 'processed')
+  action: text('action').notNull(), // 'used' | 'removed' | 'added' (legacy rows may include 'processed')
   itemId: integer('item_id'),
   itemName: text('item_name').notNull(),
   categoryName: text('category_name'),
