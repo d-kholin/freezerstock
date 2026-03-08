@@ -1,4 +1,4 @@
-import type { Category, Item, HistoryEntry, ProcessOutput, UseItemResult, ItemSnapshot } from '../types';
+import type { Category, Item, HistoryEntry, UseItemResult } from '../types';
 
 const BASE = '/api';
 
@@ -40,15 +40,6 @@ export const api = {
     request<{ success: boolean }>(`/items/${id}`, { method: 'DELETE' }),
   useItem: (id: number, amount = 1) =>
     request<UseItemResult>(`/items/${id}/use`, { method: 'POST', body: JSON.stringify({ amount }) }),
-  undoUse: (data: {
-    historyId: number;
-    itemId?: number;
-    amount: number;
-    wasRemoved: boolean;
-    snapshot?: ItemSnapshot;
-  }) => request('/items/undo-use', { method: 'POST', body: JSON.stringify(data) }),
-  processItem: (id: number, outputs: ProcessOutput[]) =>
-    request(`/items/${id}/process`, { method: 'POST', body: JSON.stringify({ outputs }) }),
 
   // History
   getHistory: (limit?: number) =>

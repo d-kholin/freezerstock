@@ -7,12 +7,11 @@ interface Props {
   categoryName: string;
   items: Item[];
   onUse: (id: number) => void;
-  onProcess: (item: Item) => void;
   onEdit: (item: Item) => void;
   defaultOpen?: boolean;
 }
 
-export default function CategoryGroup({ categoryName, items, onUse, onProcess, onEdit, defaultOpen = true }: Props) {
+export default function CategoryGroup({ categoryName, items, onUse, onEdit, defaultOpen = true }: Props) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -44,7 +43,6 @@ export default function CategoryGroup({ categoryName, items, onUse, onProcess, o
               key={item.id}
               item={item}
               onUse={onUse}
-              onProcess={onProcess}
               onEdit={onEdit}
             />
           ))}

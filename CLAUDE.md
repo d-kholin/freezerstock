@@ -41,7 +41,7 @@ In production (Docker), Nginx serves the built frontend and proxies `/api` to th
 - **`db/migrate.ts`** — initializes the DB connection (exported as `db`), runs `CREATE TABLE IF NOT EXISTS` migrations on startup. No migration file system — schema changes go here as additional SQL statements.
 - **`db/schema.ts`** — Drizzle table definitions (source of truth for TypeScript types).
 - **`db/seed.ts`** — populates default categories and item types on startup (idempotent).
-- **`routes/items.ts`** — most business logic lives here: use/undo-use/process endpoints.
+- **`routes/items.ts`** — most business logic lives here: add/update/delete/use/undo-use endpoints.
 - **`index.ts`** — mounts routers; `/api/item-types` is handled by rewiring into `categoriesRouter`.
 
 ### Frontend (`frontend/src/`)
@@ -59,8 +59,7 @@ In production (Docker), Nginx serves the built frontend and proxies `/api` to th
   // month from frozenDate is 1-indexed; getMonth() is 0-indexed
   ```
 - **Item identity**: each row is a "type+batch" (e.g., "2lb chicken breasts frozen Feb"). `itemTypeId` is null for custom items; `customName` is null for typed items. `displayName = customName || itemType.name`.
-- **Processing** (`POST /items/:id/process`): atomically deletes the source item and creates output items that inherit `frozenDate` from the source.
-- **Undo-use** (`POST /items/undo-use`): deletes the history entry and restores quantity; if the item was fully consumed, re-creates it from a `snapshot` passed by the client.
+- **Undo** (`POST /history/:id/restore`): reverses eligible history actions (`used`/`added`) and removes the restored history entry. `processed` is not restorable.
 
 ### TanStack Query conventions
 - `queryKey: ['items', search]` — inventory page (search-filtered)

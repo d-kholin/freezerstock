@@ -4,7 +4,7 @@
 
 **Problem Statement**: Managing a home freezer inventory is currently a guessing game. Users can't quickly check what they have in stock while shopping, items get forgotten and suffer freezer burn, and there's no way to track how long something has been frozen.
 
-**Proposed Solution**: FreezerStock — a mobile-first web application for tracking freezer inventory with categorized items, quantity tracking, time-in-freezer visibility, and item processing (breaking bulk purchases into smaller cuts). Dockerized for self-hosted deployment.
+**Proposed Solution**: FreezerStock — a mobile-first web application for tracking freezer inventory with categorized items, quantity tracking, and time-in-freezer visibility. Dockerized for self-hosted deployment.
 
 **Success Criteria**:
 - User can check full freezer inventory from their phone in under 3 seconds (page load)
@@ -18,7 +18,7 @@
 ## 2. User Experience & Functionality
 
 ### User Persona
-**Home Cook** — Manages a household freezer. Buys meat and other items in bulk, processes them into smaller portions, and needs to know what's in stock while grocery shopping.
+**Home Cook** — Manages a household freezer and needs to know what's in stock while grocery shopping.
 
 ### User Stories
 
@@ -50,17 +50,7 @@ Acceptance Criteria:
 - Bulk remove option (set quantity directly)
 - Confirmation on last item removal
 
-**US-4: Process Item (Break Down)**
-> As a user, I want to break a bulk purchase into processed portions so I can track what I actually have.
-
-Acceptance Criteria:
-- "Process" action on any item (e.g., a whole pork loin)
-- Opens a form to add resulting items (e.g., 4x pork chops, 2x pork roasts)
-- Original item is consumed (quantity decremented or removed)
-- Resulting items inherit the original's freeze date
-- Processing is recorded in history for future reference
-
-**US-5: Custom Items**
+**US-4: Custom Items**
 > As a user, I want to add one-off or unusual items that don't fit standard categories.
 
 Acceptance Criteria:
@@ -68,7 +58,7 @@ Acceptance Criteria:
 - Free-text name field
 - Same size/quantity/date fields as standard items
 
-**US-6: Check Stock While Shopping**
+**US-5: Check Stock While Shopping**
 > As a user, I want to quickly look up a specific item while in a store to see if I need to buy more.
 
 Acceptance Criteria:
@@ -83,6 +73,7 @@ Acceptance Criteria:
 - Shopping list generation
 - Notifications / expiry alerts
 - Offline support / PWA caching
+- In-app item processing/breakdown flow
 
 ---
 
@@ -156,14 +147,14 @@ items (
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 )
 
--- History log for removals and processing
+-- History log for add/remove actions
 history (
   id            INTEGER PRIMARY KEY,
-  action        TEXT NOT NULL,       -- 'used', 'processed', 'added'
+  action        TEXT NOT NULL,       -- 'used', 'added'
   item_id       INTEGER NULL,
   item_name     TEXT NOT NULL,       -- denormalized for persistence
   quantity      INTEGER NOT NULL,
-  details       TEXT NULL,           -- JSON for processing details
+  details       TEXT NULL,           -- JSON metadata (e.g., snapshots for undo)
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 )
 ```
@@ -188,7 +179,6 @@ POST   /api/items               -- Add new item
 PATCH  /api/items/:id           -- Update item (quantity, notes, etc.)
 DELETE /api/items/:id           -- Remove item entirely
 POST   /api/items/:id/use       -- Decrement quantity by N (default 1)
-POST   /api/items/:id/process   -- Process item into new items
 GET    /api/history             -- View history log
 POST   /api/categories          -- Add custom category
 POST   /api/item-types          -- Add custom item type
@@ -201,8 +191,6 @@ POST   /api/item-types          -- Add custom item type
 2. **Quantity model**: Each row represents a "type" of item in the freezer (e.g., "2lb bags of chicken breasts frozen in Feb"). Quantity tracks how many of that exact item you have. This matches the mental model of "I have 4 bags of the same thing."
 
 3. **Price-ready schema**: The `items` table has commented-out price columns. When price tracking is added, these columns are added (non-breaking), and the history table's JSON `details` field can store price data. No schema redesign needed.
-
-4. **Processing as a first-class operation**: The `/process` endpoint atomically decrements the source item and creates the resulting items, logging everything to history.
 
 ### Docker Setup
 
@@ -269,7 +257,6 @@ Category → Item Type (or Custom) → Quantity/Size/Date → Save
 - Category/item CRUD with prepopulated data
 - Quantity tracking with quick-use action
 - Frozen date tracking with relative display
-- Item processing (bulk → portions)
 - Search
 - Docker deployment
 - Mobile-first responsive UI
@@ -337,7 +324,6 @@ freezerstock/
 - Verify prepopulated categories and item types appear
 - Add an item, verify it shows with correct time-in-freezer
 - Add multiple of the same item, verify quantity tracking
-- Use the "process" feature to break down a bulk item
 - Swipe/tap to use an item, verify quantity decrements
 - Search for an item by name
 - Test on mobile viewport (375px Chrome DevTools)
