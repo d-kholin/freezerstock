@@ -4,18 +4,7 @@ import { CheckCircle, RotateCcw } from 'lucide-react';
 export interface ToastData {
   itemName: string;
   historyId: number;
-  itemId?: number;
-  amount: number;
   wasRemoved: boolean;
-  snapshot?: {
-    categoryId: number;
-    itemTypeId: number | null;
-    customName: string | null;
-    quantity: number;
-    sizeLabel: string | null;
-    frozenDate: string;
-    notes: string | null;
-  };
 }
 
 interface Props {

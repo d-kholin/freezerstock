@@ -147,9 +147,26 @@ router.post('/:id/use', async (req, res) => {
     const itemName = row.item.customName || row.itemType?.name || 'Unknown';
     const newQty = row.item.quantity - amount;
 
+    const snapshot = {
+      categoryId: row.item.categoryId,
+      itemTypeId: row.item.itemTypeId,
+      customName: row.item.customName,
+      quantity: row.item.quantity,
+      sizeLabel: row.item.sizeLabel,
+      frozenDate: row.item.frozenDate,
+      notes: row.item.notes,
+    };
+
     const [historyEntry] = await db
       .insert(history)
-      .values({ action: 'used', itemId: id, itemName, categoryName: row.category?.name ?? null, quantity: amount })
+      .values({
+        action: 'used',
+        itemId: id,
+        itemName,
+        categoryName: row.category?.name ?? null,
+        quantity: amount,
+        details: JSON.stringify({ snapshot }),
+      })
       .returning();
 
     if (newQty <= 0) {
@@ -158,15 +175,7 @@ router.post('/:id/use', async (req, res) => {
         removed: true,
         itemName,
         historyId: historyEntry.id,
-        snapshot: {
-          categoryId: row.item.categoryId,
-          itemTypeId: row.item.itemTypeId,
-          customName: row.item.customName,
-          quantity: row.item.quantity,
-          sizeLabel: row.item.sizeLabel,
-          frozenDate: row.item.frozenDate,
-          notes: row.item.notes,
-        },
+        snapshot,
       });
     }
 

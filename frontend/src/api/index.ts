@@ -53,4 +53,6 @@ export const api = {
   // History
   getHistory: (limit?: number) =>
     request<HistoryEntry[]>(`/history${limit ? `?limit=${limit}` : ''}`),
+  restoreHistory: (id: number) =>
+    request<{ restored: string; historyId: number }>(`/history/${id}/restore`, { method: 'POST' }),
 };

@@ -34,6 +34,7 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['items'] });
+    qc.invalidateQueries({ queryKey: ['history'] });
   };
 
   const addMutation = useMutation({
@@ -44,21 +45,18 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   const useMut = useMutation({
     mutationFn: ({ item, amount }: { item: Item; amount: number }) =>
       api.useItem(item.id, amount),
-    onSuccess: (result, { item, amount }) => {
+    onSuccess: (result, { item }) => {
       invalidate();
       setToast({
         itemName: item.displayName || item.customName || item.itemTypeName || 'item',
         historyId: result.historyId,
-        itemId: result.removed ? undefined : item.id,
-        amount,
         wasRemoved: !!result.removed,
-        snapshot: result.snapshot,
       });
     },
   });
 
   const undoMut = useMutation({
-    mutationFn: api.undoUse,
+    mutationFn: (historyId: number) => api.restoreHistory(historyId),
     onSuccess: invalidate,
   });
 
@@ -80,13 +78,7 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   });
 
   const handleUndo = (t: ToastData) => {
-    undoMut.mutate({
-      historyId: t.historyId,
-      itemId: t.itemId,
-      amount: t.amount,
-      wasRemoved: t.wasRemoved,
-      snapshot: t.snapshot,
-    });
+    undoMut.mutate(t.historyId);
   };
 
   // Group items by category
