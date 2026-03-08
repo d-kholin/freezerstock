@@ -5,7 +5,6 @@ import { api } from '../api';
 import type { Item } from '../types';
 import CategoryGroup from '../components/CategoryGroup';
 import AddItemModal from '../components/AddItemModal';
-import ProcessModal from '../components/ProcessModal';
 import EditItemModal from '../components/EditItemModal';
 import UseToast, { type ToastData } from '../components/UseToast';
 import AgingBanner from '../components/AgingBanner';
@@ -18,7 +17,6 @@ interface Props {
 export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [processItem, setProcessItem] = useState<Item | null>(null);
   const [editItem, setEditItem] = useState<Item | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
 
@@ -34,6 +32,7 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['items'] });
+    qc.invalidateQueries({ queryKey: ['history'] });
   };
 
   const addMutation = useMutation({
@@ -44,28 +43,19 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   const useMut = useMutation({
     mutationFn: ({ item, amount }: { item: Item; amount: number }) =>
       api.useItem(item.id, amount),
-    onSuccess: (result, { item, amount }) => {
+    onSuccess: (result, { item }) => {
       invalidate();
       setToast({
         itemName: item.displayName || item.customName || item.itemTypeName || 'item',
         historyId: result.historyId,
-        itemId: result.removed ? undefined : item.id,
-        amount,
         wasRemoved: !!result.removed,
-        snapshot: result.snapshot,
       });
     },
   });
 
   const undoMut = useMutation({
-    mutationFn: api.undoUse,
+    mutationFn: (historyId: number) => api.restoreHistory(historyId),
     onSuccess: invalidate,
-  });
-
-  const processMut = useMutation({
-    mutationFn: ({ id, outputs }: { id: number; outputs: Parameters<typeof api.processItem>[1] }) =>
-      api.processItem(id, outputs),
-    onSuccess: () => { invalidate(); setProcessItem(null); },
   });
 
   const updateMut = useMutation({
@@ -80,13 +70,7 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   });
 
   const handleUndo = (t: ToastData) => {
-    undoMut.mutate({
-      historyId: t.historyId,
-      itemId: t.itemId,
-      amount: t.amount,
-      wasRemoved: t.wasRemoved,
-      snapshot: t.snapshot,
-    });
+    undoMut.mutate(t.historyId);
   };
 
   // Group items by category
@@ -174,7 +158,6 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
                   const item = items.find((i) => i.id === id);
                   if (item) useMut.mutate({ item, amount: 1 });
                 }}
-                onProcess={setProcessItem}
                 onEdit={setEditItem}
                 defaultOpen={!search || grouped.size === 1}
               />
@@ -190,14 +173,6 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
           categories={categories}
           onSave={(data) => addMutation.mutate(data)}
           onClose={() => setShowAdd(false)}
-        />
-      )}
-      {processItem && (
-        <ProcessModal
-          item={processItem}
-          categories={categories}
-          onSave={(outputs) => processMut.mutate({ id: processItem.id, outputs })}
-          onClose={() => setProcessItem(null)}
         />
       )}
       {editItem && (

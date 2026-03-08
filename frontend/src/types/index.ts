@@ -61,12 +61,3 @@ export interface UseItemResult {
   itemName?: string;
   snapshot?: ItemSnapshot;
 }
-
-export interface ProcessOutput {
-  categoryId: number;
-  itemTypeId?: number;
-  customName?: string;
-  quantity: number;
-  sizeLabel?: string;
-  notes?: string;
-}

@@ -147,9 +147,26 @@ router.post('/:id/use', async (req, res) => {
     const itemName = row.item.customName || row.itemType?.name || 'Unknown';
     const newQty = row.item.quantity - amount;
 
+    const snapshot = {
+      categoryId: row.item.categoryId,
+      itemTypeId: row.item.itemTypeId,
+      customName: row.item.customName,
+      quantity: row.item.quantity,
+      sizeLabel: row.item.sizeLabel,
+      frozenDate: row.item.frozenDate,
+      notes: row.item.notes,
+    };
+
     const [historyEntry] = await db
       .insert(history)
-      .values({ action: 'used', itemId: id, itemName, categoryName: row.category?.name ?? null, quantity: amount })
+      .values({
+        action: 'used',
+        itemId: id,
+        itemName,
+        categoryName: row.category?.name ?? null,
+        quantity: amount,
+        details: JSON.stringify({ snapshot }),
+      })
       .returning();
 
     if (newQty <= 0) {
@@ -158,15 +175,7 @@ router.post('/:id/use', async (req, res) => {
         removed: true,
         itemName,
         historyId: historyEntry.id,
-        snapshot: {
-          categoryId: row.item.categoryId,
-          itemTypeId: row.item.itemTypeId,
-          customName: row.item.customName,
-          quantity: row.item.quantity,
-          sizeLabel: row.item.sizeLabel,
-          frozenDate: row.item.frozenDate,
-          notes: row.item.notes,
-        },
+        snapshot,
       });
     }
 
@@ -225,59 +234,6 @@ router.post('/undo-use', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to undo' });
-  }
-});
-
-router.post('/:id/process', async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const { outputs } = req.body;
-
-    if (!outputs?.length) return res.status(400).json({ error: 'outputs array is required' });
-
-    const [row] = await db
-      .select({ item: items, itemType: itemTypes, category: categories })
-      .from(items)
-      .leftJoin(itemTypes, eq(items.itemTypeId, itemTypes.id))
-      .leftJoin(categories, eq(items.categoryId, categories.id))
-      .where(eq(items.id, id));
-
-    if (!row) return res.status(404).json({ error: 'Item not found' });
-
-    const sourceName = row.item.customName || row.itemType?.name || 'Unknown';
-    const sourceFrozenDate = row.item.frozenDate;
-    const created: typeof items.$inferSelect[] = [];
-
-    for (const out of outputs) {
-      const [newItem] = await db
-        .insert(items)
-        .values({
-          categoryId: Number(out.categoryId),
-          itemTypeId: out.itemTypeId ? Number(out.itemTypeId) : null,
-          customName: out.customName?.trim() || null,
-          quantity: Number(out.quantity) || 1,
-          sizeLabel: out.sizeLabel?.trim() || null,
-          frozenDate: sourceFrozenDate,
-          notes: out.notes?.trim() || null,
-        })
-        .returning();
-      created.push(newItem);
-    }
-
-    await db.insert(history).values({
-      action: 'processed',
-      itemId: id,
-      itemName: sourceName,
-      categoryName: row.category?.name ?? null,
-      quantity: row.item.quantity,
-      details: JSON.stringify({ outputs: created.map((c) => c.id) }),
-    });
-
-    await db.delete(items).where(eq(items.id, id));
-
-    res.json({ processed: sourceName, created });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to process item' });
   }
 });
 

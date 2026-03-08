@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { History, PackagePlus, PackageMinus, Scissors } from 'lucide-react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { History, PackagePlus, PackageMinus, Scissors, RotateCcw } from 'lucide-react';
 import { api } from '../api';
 import type { HistoryEntry } from '../types';
 
@@ -26,10 +27,27 @@ function formatTime(iso: string) {
 }
 
 export default function HistoryPage() {
+  const qc = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['history'],
     queryFn: () => api.getHistory(200),
   });
+
+  const restoreMut = useMutation({
+    mutationFn: (id: number) => api.restoreHistory(id),
+    onSuccess: () => {
+      setError(null);
+      qc.invalidateQueries({ queryKey: ['items'] });
+      qc.invalidateQueries({ queryKey: ['history'] });
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : 'Undo failed');
+    },
+  });
+
+  const canRestore = (action: HistoryEntry['action']) => action === 'used' || action === 'added';
 
   return (
     <div className="flex flex-col h-full">
@@ -41,6 +59,11 @@ export default function HistoryPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {error && (
+          <div className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-gray-400">Loading...</div>
         ) : entries.length === 0 ? (
@@ -79,6 +102,16 @@ export default function HistoryPage() {
                       · {entry.quantity} {entry.quantity === 1 ? 'item' : 'items'}
                     </span>
                     <span className="text-xs text-gray-400 ml-auto">{formatTime(entry.createdAt)}</span>
+                    {canRestore(entry.action) && (
+                      <button
+                        onClick={() => restoreMut.mutate(entry.id)}
+                        disabled={restoreMut.isPending}
+                        className="ml-1 inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Undo
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Minus, MoreVertical, Scissors } from 'lucide-react';
+import { Minus, MoreVertical } from 'lucide-react';
 import type { Item } from '../types';
 import FrozenAgo from './FrozenAgo';
 
 interface Props {
   item: Item;
   onUse: (id: number) => void;
-  onProcess: (item: Item) => void;
   onEdit: (item: Item) => void;
 }
 
@@ -15,7 +14,7 @@ interface MenuPos {
   right: number;
 }
 
-export default function ItemRow({ item, onUse, onProcess, onEdit }: Props) {
+export default function ItemRow({ item, onUse, onEdit }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<MenuPos>({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -95,13 +94,6 @@ export default function ItemRow({ item, onUse, onProcess, onEdit }: Props) {
             className="fixed z-50 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px]"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
-            <button
-              onClick={() => { onProcess(item); setMenuOpen(false); }}
-              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-            >
-              <Scissors className="w-4 h-4" />
-              Process item
-            </button>
             <button
               onClick={() => { onEdit(item); setMenuOpen(false); }}
               className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100"
