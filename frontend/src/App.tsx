@@ -4,10 +4,13 @@ import { Archive, History, BarChart2, Plus } from 'lucide-react';
 import InventoryPage from './pages/InventoryPage';
 import HistoryPage from './pages/HistoryPage';
 import ReportsPage from './pages/ReportsPage';
+import useRealtimeSync from './realtime/useRealtimeSync';
 
 function AppShell() {
   const [showAdd, setShowAdd] = useState(false);
   const navigate = useNavigate();
+
+  useRealtimeSync();
 
   const handleAdd = () => {
     navigate('/');
