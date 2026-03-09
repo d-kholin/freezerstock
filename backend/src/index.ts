@@ -1,10 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
 import { runMigrations } from './db/migrate';
 import { seedDatabase } from './db/seed';
 import categoriesRouter from './routes/categories';
 import itemsRouter from './routes/items';
 import historyRouter from './routes/history';
+import { registerRealtimeServer } from './realtime';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,7 +27,12 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 async function main() {
   await runMigrations();
   await seedDatabase();
-  app.listen(PORT, () => {
+
+  const server = createServer(app);
+  const wsServer = new WebSocketServer({ server, path: '/api/ws' });
+  registerRealtimeServer(wsServer);
+
+  server.listen(PORT, () => {
     console.log(`FreezerStock API running on port ${PORT}`);
   });
 }

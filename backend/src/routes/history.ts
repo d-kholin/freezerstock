@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/migrate';
 import { history, items } from '../db/schema';
 import { desc, eq } from 'drizzle-orm';
+import { broadcastRealtime } from '../realtime';
 
 const router = Router();
 
@@ -59,6 +60,8 @@ router.post('/:id/restore', async (req, res) => {
 
       await db.delete(items).where(eq(items.id, entry.itemId));
       await db.delete(history).where(eq(history.id, historyId));
+      broadcastRealtime('items.changed');
+      broadcastRealtime('history.changed');
       return res.json({ restored: 'added', historyId });
     }
 
@@ -93,6 +96,8 @@ router.post('/:id/restore', async (req, res) => {
         .returning();
 
       await db.delete(history).where(eq(history.id, historyId));
+      broadcastRealtime('items.changed');
+      broadcastRealtime('history.changed');
       return res.json({ restored: 'removed', historyId, item: restored });
     }
 
@@ -112,6 +117,8 @@ router.post('/:id/restore', async (req, res) => {
             .returning();
 
           await db.delete(history).where(eq(history.id, historyId));
+          broadcastRealtime('items.changed');
+          broadcastRealtime('history.changed');
           return res.json({ restored: 'used', historyId, item: updated });
         }
       }
@@ -143,6 +150,8 @@ router.post('/:id/restore', async (req, res) => {
         .returning();
 
       await db.delete(history).where(eq(history.id, historyId));
+      broadcastRealtime('items.changed');
+      broadcastRealtime('history.changed');
       return res.json({ restored: 'used', historyId, item: restored });
     }
 

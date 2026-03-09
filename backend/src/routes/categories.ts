@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/migrate';
 import { categories, itemTypes } from '../db/schema';
 import { eq, asc } from 'drizzle-orm';
+import { broadcastRealtime } from '../realtime';
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.post('/', async (req, res) => {
       .insert(categories)
       .values({ name: name.trim(), isDefault: false })
       .returning();
+    broadcastRealtime('categories.changed');
     res.status(201).json(cat);
   } catch (err: any) {
     if (err.message?.includes('UNIQUE')) {
@@ -54,6 +56,7 @@ router.post('/item-types', async (req, res) => {
       .insert(itemTypes)
       .values({ categoryId: Number(categoryId), name: name.trim(), isDefault: false })
       .returning();
+    broadcastRealtime('categories.changed');
     res.status(201).json(type);
   } catch (err: any) {
     if (err.message?.includes('UNIQUE')) {

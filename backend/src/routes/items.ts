@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/migrate';
 import { items, categories, itemTypes, history } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { broadcastRealtime } from '../realtime';
 
 const router = Router();
 
@@ -81,6 +82,8 @@ router.post('/', async (req, res) => {
       quantity: item.quantity,
     });
 
+    broadcastRealtime('items.changed');
+    broadcastRealtime('history.changed');
     res.status(201).json(item);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create item' });
@@ -103,6 +106,7 @@ router.patch('/:id', async (req, res) => {
     if (frozenDate !== undefined) updates.frozenDate = frozenDate;
 
     const [updated] = await db.update(items).set(updates).where(eq(items.id, id)).returning();
+    broadcastRealtime('items.changed');
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update item' });
@@ -141,6 +145,8 @@ router.delete('/:id', async (req, res) => {
       details: JSON.stringify({ snapshot }),
     });
     await db.delete(items).where(eq(items.id, id));
+    broadcastRealtime('items.changed');
+    broadcastRealtime('history.changed');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete item' });
@@ -188,6 +194,8 @@ router.post('/:id/use', async (req, res) => {
 
     if (newQty <= 0) {
       await db.delete(items).where(eq(items.id, id));
+      broadcastRealtime('items.changed');
+      broadcastRealtime('history.changed');
       return res.json({
         removed: true,
         itemName,
@@ -202,6 +210,8 @@ router.post('/:id/use', async (req, res) => {
       .where(eq(items.id, id))
       .returning();
 
+    broadcastRealtime('items.changed');
+    broadcastRealtime('history.changed');
     res.json({ ...updated, historyId: historyEntry.id });
   } catch (err) {
     res.status(500).json({ error: 'Failed to use item' });
@@ -232,6 +242,8 @@ router.post('/undo-use', async (req, res) => {
           notes: snapshot.notes || null,
         })
         .returning();
+      broadcastRealtime('items.changed');
+      broadcastRealtime('history.changed');
       return res.json({ restored });
     }
 
@@ -244,10 +256,13 @@ router.post('/undo-use', async (req, res) => {
           .set({ quantity: existing.quantity + Number(amount), updatedAt: new Date().toISOString() })
           .where(eq(items.id, Number(itemId)))
           .returning();
+        broadcastRealtime('items.changed');
+        broadcastRealtime('history.changed');
         return res.json({ restored: updated });
       }
     }
 
+    broadcastRealtime('history.changed');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to undo' });
