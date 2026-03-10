@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { X, ChevronDown } from 'lucide-react';
-import type { Category } from '../types';
+import type { Category, Subcategory } from '../types';
 
 interface Props {
   categories: Category[];
   onSave: (data: {
     categoryId: number;
+    subcategoryId?: number;
     itemTypeId?: number;
     customName?: string;
     quantity: number;
@@ -14,6 +15,9 @@ interface Props {
     notes?: string;
   }) => void;
   onClose: () => void;
+  // Optional pre-fill from quick-add button
+  initialCategoryId?: number;
+  initialSubcategoryId?: number;
 }
 
 function currentYearMonth() {
@@ -21,8 +25,16 @@ function currentYearMonth() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export default function AddItemModal({ categories, onSave, onClose }: Props) {
-  const [categoryId, setCategoryId] = useState<number | ''>('');
+export default function AddItemModal({
+  categories,
+  onSave,
+  onClose,
+  initialCategoryId,
+  initialSubcategoryId,
+}: Props) {
+  const [categoryId, setCategoryId] = useState<number | ''>(initialCategoryId ?? '');
+  const [subcategoryId, setSubcategoryId] = useState<number | 'new' | ''>(initialSubcategoryId ?? '');
+  const [newSubcatName, setNewSubcatName] = useState('');
   const [itemTypeId, setItemTypeId] = useState<number | 'custom' | ''>('');
   const [customName, setCustomName] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -35,13 +47,44 @@ export default function AddItemModal({ categories, onSave, onClose }: Props) {
     [categories, categoryId]
   );
 
+  const hasSubcategories = (selectedCategory?.subcategories?.length ?? 0) > 0;
+
+  const selectedSubcategory: Subcategory | undefined = useMemo(() => {
+    if (!selectedCategory || !subcategoryId || subcategoryId === 'new') return undefined;
+    return selectedCategory.subcategories?.find((s) => s.id === subcategoryId);
+  }, [selectedCategory, subcategoryId]);
+
+  // Item types available depend on whether a subcategory is selected
+  const availableItemTypes = useMemo(() => {
+    if (selectedSubcategory) return selectedSubcategory.itemTypes;
+    if (!selectedCategory) return [];
+    // No subcategory selected — show top-level item types
+    return selectedCategory.itemTypes;
+  }, [selectedCategory, selectedSubcategory]);
+
+  const handleCategoryChange = (id: number | '') => {
+    setCategoryId(id);
+    setSubcategoryId('');
+    setItemTypeId('');
+    setNewSubcatName('');
+  };
+
+  const handleSubcategoryChange = (val: number | 'new' | '') => {
+    setSubcategoryId(val);
+    setItemTypeId('');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryId) return;
     if (!itemTypeId && !customName.trim()) return;
 
+    // If "new subcategory" is selected, we can't submit without a name
+    if (subcategoryId === 'new' && !newSubcatName.trim()) return;
+
     onSave({
       categoryId: Number(categoryId),
+      subcategoryId: subcategoryId && subcategoryId !== 'new' ? Number(subcategoryId) : undefined,
       itemTypeId: itemTypeId && itemTypeId !== 'custom' ? Number(itemTypeId) : undefined,
       customName: itemTypeId === 'custom' ? customName.trim() : undefined,
       quantity,
@@ -77,7 +120,7 @@ export default function AddItemModal({ categories, onSave, onClose }: Props) {
             <div className="relative">
               <select
                 value={categoryId}
-                onChange={(e) => { setCategoryId(Number(e.target.value)); setItemTypeId(''); }}
+                onChange={(e) => handleCategoryChange(Number(e.target.value) || '')}
                 required
                 className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -90,8 +133,45 @@ export default function AddItemModal({ categories, onSave, onClose }: Props) {
             </div>
           </div>
 
+          {/* Subcategory — only when category has subcategories */}
+          {selectedCategory && hasSubcategories && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Subcategory <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={subcategoryId}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    handleSubcategoryChange(v === 'new' ? 'new' : (Number(v) || ''));
+                  }}
+                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">None (top-level)</option>
+                  {selectedCategory.subcategories.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                  <option value="new">+ New Subcategory...</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              </div>
+              {/* New subcategory name input */}
+              {subcategoryId === 'new' && (
+                <input
+                  type="text"
+                  value={newSubcatName}
+                  onChange={(e) => setNewSubcatName(e.target.value)}
+                  placeholder="Subcategory name..."
+                  required
+                  className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              )}
+            </div>
+          )}
+
           {/* Item type */}
-          {selectedCategory && (
+          {selectedCategory && subcategoryId !== 'new' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Type</label>
               <div className="relative">
@@ -102,7 +182,7 @@ export default function AddItemModal({ categories, onSave, onClose }: Props) {
                   className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select type...</option>
-                  {selectedCategory.itemTypes.map((t) => (
+                  {availableItemTypes.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                   <option value="custom">Custom...</option>

@@ -54,10 +54,12 @@ export default function ItemRow({ item, onUse, onEdit }: Props) {
 
       {/* Item info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center justify-between gap-2">
           <span className="font-medium text-gray-900 truncate">{displayName}</span>
           {item.sizeLabel && (
-            <span className="text-xs text-gray-400 shrink-0">{item.sizeLabel}</span>
+            <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full shrink-0">
+              {item.sizeLabel}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
