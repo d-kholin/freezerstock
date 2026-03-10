@@ -8,6 +8,7 @@ const router = Router();
 
 interface ItemSnapshot {
   categoryId: number;
+  subcategoryId?: number | null;
   itemTypeId: number | null;
   customName: string | null;
   quantity: number;
@@ -80,6 +81,7 @@ router.post('/:id/restore', async (req, res) => {
 
       const restoreValues: typeof items.$inferInsert = {
         categoryId: Number(snapshot.categoryId),
+        subcategoryId: snapshot.subcategoryId ? Number(snapshot.subcategoryId) : null,
         itemTypeId: snapshot.itemTypeId ? Number(snapshot.itemTypeId) : null,
         customName: snapshot.customName || null,
         quantity: Number(snapshot.quantity),
@@ -131,6 +133,7 @@ router.post('/:id/restore', async (req, res) => {
 
       const restoreValues: typeof items.$inferInsert = {
         categoryId: Number(snapshot.categoryId),
+        subcategoryId: snapshot.subcategoryId ? Number(snapshot.subcategoryId) : null,
         itemTypeId: snapshot.itemTypeId ? Number(snapshot.itemTypeId) : null,
         customName: snapshot.customName || null,
         quantity: Number(snapshot.quantity),

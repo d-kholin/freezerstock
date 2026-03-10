@@ -8,9 +8,18 @@ export const categories = sqliteTable('categories', {
   isDefault: integer('is_default', { mode: 'boolean' }).default(false),
 });
 
+export const subcategories = sqliteTable('subcategories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  categoryId: integer('category_id').notNull().references(() => categories.id),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').default(0),
+  isDefault: integer('is_default', { mode: 'boolean' }).default(false),
+});
+
 export const itemTypes = sqliteTable('item_types', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   categoryId: integer('category_id').notNull().references(() => categories.id),
+  subcategoryId: integer('subcategory_id').references(() => subcategories.id),
   name: text('name').notNull(),
   isDefault: integer('is_default', { mode: 'boolean' }).default(false),
 });
@@ -18,6 +27,7 @@ export const itemTypes = sqliteTable('item_types', {
 export const items = sqliteTable('items', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   categoryId: integer('category_id').notNull().references(() => categories.id),
+  subcategoryId: integer('subcategory_id').references(() => subcategories.id),
   itemTypeId: integer('item_type_id').references(() => itemTypes.id),
   customName: text('custom_name'),
   quantity: integer('quantity').notNull().default(1),
@@ -43,7 +53,17 @@ export const history = sqliteTable('history', {
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
+export const inventoryChecks = sqliteTable('inventory_checks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  completedAt: text('completed_at').notNull().default(sql`(datetime('now'))`),
+  totalItems: integer('total_items').notNull(),
+  checkedCount: integer('checked_count').notNull(),
+  removedCount: integer('removed_count').notNull(),
+});
+
 export type Category = typeof categories.$inferSelect;
+export type Subcategory = typeof subcategories.$inferSelect;
 export type ItemType = typeof itemTypes.$inferSelect;
 export type Item = typeof items.$inferSelect;
 export type HistoryEntry = typeof history.$inferSelect;
+export type InventoryCheck = typeof inventoryChecks.$inferSelect;

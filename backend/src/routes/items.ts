@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/migrate';
-import { items, categories, itemTypes, history } from '../db/schema';
+import { items, categories, subcategories, itemTypes, history } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { broadcastRealtime } from '../realtime';
 
@@ -14,10 +14,12 @@ router.get('/', async (req, res) => {
       .select({
         item: items,
         category: categories,
+        subcategory: subcategories,
         itemType: itemTypes,
       })
       .from(items)
       .leftJoin(categories, eq(items.categoryId, categories.id))
+      .leftJoin(subcategories, eq(items.subcategoryId, subcategories.id))
       .leftJoin(itemTypes, eq(items.itemTypeId, itemTypes.id))
       .where(
         search
@@ -25,14 +27,16 @@ router.get('/', async (req, res) => {
               LOWER(COALESCE(${items.customName}, '')) LIKE ${'%' + search + '%'}
               OR LOWER(COALESCE(${itemTypes.name}, '')) LIKE ${'%' + search + '%'}
               OR LOWER(COALESCE(${categories.name}, '')) LIKE ${'%' + search + '%'}
+              OR LOWER(COALESCE(${subcategories.name}, '')) LIKE ${'%' + search + '%'}
             )`
           : undefined
       )
-      .orderBy(categories.sortOrder, itemTypes.name, items.customName);
+      .orderBy(categories.sortOrder, subcategories.sortOrder, itemTypes.name, items.customName);
 
-    const result = rows.map(({ item, category, itemType }) => ({
+    const result = rows.map(({ item, category, subcategory, itemType }) => ({
       ...item,
       categoryName: category?.name,
+      subcategoryName: subcategory?.name ?? null,
       itemTypeName: itemType?.name,
       displayName: item.customName || itemType?.name,
     }));
@@ -45,7 +49,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { categoryId, itemTypeId, customName, quantity, sizeLabel, frozenDate, notes } = req.body;
+    const { categoryId, subcategoryId, itemTypeId, customName, quantity, sizeLabel, frozenDate, notes } = req.body;
 
     if (!categoryId) return res.status(400).json({ error: 'categoryId is required' });
     if (!frozenDate) return res.status(400).json({ error: 'frozenDate is required' });
@@ -65,6 +69,7 @@ router.post('/', async (req, res) => {
       .insert(items)
       .values({
         categoryId: Number(categoryId),
+        subcategoryId: subcategoryId ? Number(subcategoryId) : null,
         itemTypeId: itemTypeId ? Number(itemTypeId) : null,
         customName: customName?.trim() || null,
         quantity: Number(quantity) || 1,
@@ -96,7 +101,7 @@ router.patch('/:id', async (req, res) => {
     const [existing] = await db.select().from(items).where(eq(items.id, id));
     if (!existing) return res.status(404).json({ error: 'Item not found' });
 
-    const { quantity, sizeLabel, notes, frozenDate } = req.body;
+    const { quantity, sizeLabel, notes, frozenDate, categoryId, subcategoryId, itemTypeId, customName } = req.body;
     const updates: Partial<typeof items.$inferInsert> = {
       updatedAt: new Date().toISOString(),
     };
@@ -104,6 +109,10 @@ router.patch('/:id', async (req, res) => {
     if (sizeLabel !== undefined) updates.sizeLabel = sizeLabel?.trim() || null;
     if (notes !== undefined) updates.notes = notes?.trim() || null;
     if (frozenDate !== undefined) updates.frozenDate = frozenDate;
+    if (categoryId !== undefined) updates.categoryId = Number(categoryId);
+    if (subcategoryId !== undefined) updates.subcategoryId = subcategoryId ? Number(subcategoryId) : null;
+    if (itemTypeId !== undefined) updates.itemTypeId = itemTypeId ? Number(itemTypeId) : null;
+    if (customName !== undefined) updates.customName = customName?.trim() || null;
 
     const [updated] = await db.update(items).set(updates).where(eq(items.id, id)).returning();
     broadcastRealtime('items.changed');
@@ -128,6 +137,7 @@ router.delete('/:id', async (req, res) => {
     const itemName = row.item.customName || row.itemType?.name || 'Unknown';
     const snapshot = {
       categoryId: row.item.categoryId,
+      subcategoryId: row.item.subcategoryId,
       itemTypeId: row.item.itemTypeId,
       customName: row.item.customName,
       quantity: row.item.quantity,
@@ -172,6 +182,7 @@ router.post('/:id/use', async (req, res) => {
 
     const snapshot = {
       categoryId: row.item.categoryId,
+      subcategoryId: row.item.subcategoryId,
       itemTypeId: row.item.itemTypeId,
       customName: row.item.customName,
       quantity: row.item.quantity,
@@ -234,6 +245,7 @@ router.post('/undo-use', async (req, res) => {
         .insert(items)
         .values({
           categoryId: Number(snapshot.categoryId),
+          subcategoryId: snapshot.subcategoryId ? Number(snapshot.subcategoryId) : null,
           itemTypeId: snapshot.itemTypeId ? Number(snapshot.itemTypeId) : null,
           customName: snapshot.customName || null,
           quantity: Number(snapshot.quantity),

@@ -7,6 +7,7 @@ import { seedDatabase } from './db/seed';
 import categoriesRouter from './routes/categories';
 import itemsRouter from './routes/items';
 import historyRouter from './routes/history';
+import inventoryChecksRouter from './routes/inventoryChecks';
 import { registerRealtimeServer } from './realtime';
 
 const app = express();
@@ -16,12 +17,17 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/categories', categoriesRouter);
+app.use('/api/subcategories', (req, res, next) => {
+  req.url = '/subcategories' + (req.url === '/' ? '' : req.url);
+  categoriesRouter(req, res, next);
+});
 app.use('/api/item-types', (req, res, next) => {
   req.url = '/item-types' + (req.url === '/' ? '' : req.url);
   categoriesRouter(req, res, next);
 });
 app.use('/api/items', itemsRouter);
 app.use('/api/history', historyRouter);
+app.use('/api/inventory-checks', inventoryChecksRouter);
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 async function main() {
