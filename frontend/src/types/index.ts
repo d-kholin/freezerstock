@@ -1,14 +1,25 @@
-export interface Category {
+export interface Subcategory {
   id: number;
+  categoryId: number;
   name: string;
   sortOrder: number | null;
   isDefault: boolean | null;
   itemTypes: ItemType[];
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  sortOrder: number | null;
+  isDefault: boolean | null;
+  itemTypes: ItemType[];         // top-level item types (no subcategory)
+  subcategories: Subcategory[];  // nested subcategories with their item types
+}
+
 export interface ItemType {
   id: number;
   categoryId: number;
+  subcategoryId: number | null;
   name: string;
   isDefault: boolean | null;
 }
@@ -16,6 +27,7 @@ export interface ItemType {
 export interface Item {
   id: number;
   categoryId: number;
+  subcategoryId: number | null;
   itemTypeId: number | null;
   customName: string | null;
   quantity: number;
@@ -26,6 +38,7 @@ export interface Item {
   updatedAt: string;
   // Joined fields
   categoryName?: string;
+  subcategoryName?: string | null;
   itemTypeName?: string;
   displayName?: string;
 }
@@ -43,6 +56,7 @@ export interface HistoryEntry {
 
 export interface ItemSnapshot {
   categoryId: number;
+  subcategoryId: number | null;
   itemTypeId: number | null;
   customName: string | null;
   quantity: number;
@@ -60,4 +74,12 @@ export interface UseItemResult {
   removed?: boolean;
   itemName?: string;
   snapshot?: ItemSnapshot;
+}
+
+export interface InventoryCheck {
+  id: number;
+  completedAt: string;
+  totalItems: number;
+  checkedCount: number;
+  removedCount: number;
 }
