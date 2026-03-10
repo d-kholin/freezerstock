@@ -63,6 +63,21 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
     },
   });
 
+  const createCategoryMut = useMutation({
+    mutationFn: api.createCategory,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+
+  const createSubcategoryMut = useMutation({
+    mutationFn: ({ categoryId, name }: { categoryId: number; name: string }) =>
+      api.createSubcategory(categoryId, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+
   const useMut = useMutation({
     mutationFn: ({ item, amount }: { item: Item; amount: number }) =>
       api.useItem(item.id, amount),
@@ -290,6 +305,10 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
         <AddItemModal
           categories={categories}
           onSave={(data) => addMutation.mutate(data)}
+          onCreateCategory={(name) => createCategoryMut.mutateAsync(name)}
+          onCreateSubcategory={(categoryId, name) =>
+            createSubcategoryMut.mutateAsync({ categoryId, name })
+          }
           onClose={() => {
             setShowAdd(false);
             setQuickAddCategoryId(undefined);
