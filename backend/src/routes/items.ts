@@ -8,7 +8,28 @@ const router = Router();
 
 router.get('/', async (req, res) => {
   try {
-    const search = (req.query.search as string)?.toLowerCase().trim();
+    const raw = (req.query.search as string)?.trim() ?? '';
+    // Split into individual tokens so "fillet roast" matches an item whose
+    // type is "Fillets" and whose subcategory is "Roast" (each token must
+    // appear somewhere across any of the searchable fields).
+    const tokens = raw.toLowerCase().split(/\s+/).filter(Boolean);
+
+    // Build one AND clause per token, each OR-ing across all searchable fields.
+    const whereClause = tokens.length
+      ? sql.join(
+          tokens.map((token) => {
+            const p = `%${token}%`;
+            return sql`(
+              LOWER(COALESCE(${items.customName}, '')) LIKE ${p}
+              OR LOWER(COALESCE(${itemTypes.name}, '')) LIKE ${p}
+              OR LOWER(COALESCE(${categories.name}, '')) LIKE ${p}
+              OR LOWER(COALESCE(${subcategories.name}, '')) LIKE ${p}
+              OR LOWER(COALESCE(${items.notes}, '')) LIKE ${p}
+            )`;
+          }),
+          sql` AND `
+        )
+      : undefined;
 
     const rows = await db
       .select({
@@ -21,16 +42,7 @@ router.get('/', async (req, res) => {
       .leftJoin(categories, eq(items.categoryId, categories.id))
       .leftJoin(subcategories, eq(items.subcategoryId, subcategories.id))
       .leftJoin(itemTypes, eq(items.itemTypeId, itemTypes.id))
-      .where(
-        search
-          ? sql`(
-              LOWER(COALESCE(${items.customName}, '')) LIKE ${'%' + search + '%'}
-              OR LOWER(COALESCE(${itemTypes.name}, '')) LIKE ${'%' + search + '%'}
-              OR LOWER(COALESCE(${categories.name}, '')) LIKE ${'%' + search + '%'}
-              OR LOWER(COALESCE(${subcategories.name}, '')) LIKE ${'%' + search + '%'}
-            )`
-          : undefined
-      )
+      .where(whereClause)
       .orderBy(categories.sortOrder, subcategories.sortOrder, itemTypes.name, items.customName);
 
     const result = rows.map(({ item, category, subcategory, itemType }) => ({
