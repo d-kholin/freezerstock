@@ -66,6 +66,11 @@ export default function ReportsPage() {
     queryFn: () => api.getItems(),
   });
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: api.getCategories,
+  });
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['items'] });
 
   const useMut = useMutation({
@@ -237,6 +242,7 @@ export default function ReportsPage() {
       {editItem && (
         <EditItemModal
           item={editItem}
+          categories={categories}
           onSave={(id, data) => updateMut.mutate({ id, data })}
           onDelete={(id) => deleteMut.mutate(id)}
           onClose={() => setEditItem(null)}

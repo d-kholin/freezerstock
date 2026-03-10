@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, X, Snowflake } from 'lucide-react';
+import { Search, X, Snowflake, ClipboardCheck } from 'lucide-react';
 import { api } from '../api';
 import type { Item } from '../types';
 import CategoryGroup from '../components/CategoryGroup';
@@ -8,17 +8,30 @@ import AddItemModal from '../components/AddItemModal';
 import EditItemModal from '../components/EditItemModal';
 import UseToast, { type ToastData } from '../components/UseToast';
 import AgingBanner from '../components/AgingBanner';
+import InventoryCheckMode from '../components/InventoryCheckMode';
+import CheckSummaryModal from '../components/CheckSummaryModal';
 
 interface Props {
   showAdd: boolean;
   setShowAdd: (v: boolean) => void;
 }
 
+type CheckPhase = 'idle' | 'checking' | 'summary';
+
 export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [editItem, setEditItem] = useState<Item | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
+
+  // Quick-add pre-fill state
+  const [quickAddCategoryId, setQuickAddCategoryId] = useState<number | undefined>(undefined);
+  const [quickAddSubcategoryId, setQuickAddSubcategoryId] = useState<number | undefined>(undefined);
+
+  // Inventory check state
+  const [checkPhase, setCheckPhase] = useState<CheckPhase>('idle');
+  const [checkItems, setCheckItems] = useState<Item[]>([]);
+  const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set());
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -30,6 +43,11 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
     queryFn: () => api.getItems(search || undefined),
   });
 
+  const { data: latestCheck } = useQuery({
+    queryKey: ['inventory-check-latest'],
+    queryFn: api.getLatestInventoryCheck,
+  });
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['items'] });
     qc.invalidateQueries({ queryKey: ['history'] });
@@ -37,7 +55,12 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
 
   const addMutation = useMutation({
     mutationFn: api.createItem,
-    onSuccess: () => { invalidate(); setShowAdd(false); },
+    onSuccess: () => {
+      invalidate();
+      setShowAdd(false);
+      setQuickAddCategoryId(undefined);
+      setQuickAddSubcategoryId(undefined);
+    },
   });
 
   const useMut = useMutation({
@@ -69,31 +92,124 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
     onSuccess: () => { invalidate(); setEditItem(null); },
   });
 
+  const completeCheckMut = useMutation({
+    mutationFn: ({ checkedItemIds, removals }: { checkedItemIds: number[]; removals: number[] }) =>
+      api.completeInventoryCheck(checkedItemIds, removals),
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['inventory-check-latest'] });
+      setCheckPhase('idle');
+      setCheckItems([]);
+      setCheckedIds(new Set());
+    },
+  });
+
   const handleUndo = (t: ToastData) => {
     undoMut.mutate(t.historyId);
   };
 
-  // Group items by category
+  const handleQuickAdd = (categoryId: number, subcategoryId?: number) => {
+    setQuickAddCategoryId(categoryId);
+    setQuickAddSubcategoryId(subcategoryId);
+    setShowAdd(true);
+  };
+
+  const handleStartCheck = async () => {
+    try {
+      const result = await api.startInventoryCheck();
+      setCheckItems(result.items);
+      setCheckedIds(new Set());
+      setCheckPhase('checking');
+    } catch {
+      // silently fail — user stays on normal view
+    }
+  };
+
+  const handleFinishCheck = (checked: Set<number>) => {
+    setCheckedIds(checked);
+    setCheckPhase('summary');
+  };
+
+  const handleCompleteCheck = (removals: number[]) => {
+    completeCheckMut.mutate({
+      checkedItemIds: Array.from(checkedIds),
+      removals,
+    });
+  };
+
+  // Last-checked display
+  const lastCheckedLabel = useMemo(() => {
+    if (!latestCheck) return null;
+    const ms = Date.now() - new Date(latestCheck.completedAt).getTime();
+    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+    if (days === 0) return { label: 'Checked today', aged: false };
+    if (days === 1) return { label: 'Checked yesterday', aged: false };
+    if (days < 30) return { label: `Checked ${days}d ago`, aged: false };
+    const weeks = Math.floor(days / 7);
+    if (weeks < 8) return { label: `Checked ${weeks}w ago`, aged: days > 30 };
+    return { label: `Checked ${Math.floor(days / 30)}mo ago`, aged: true };
+  }, [latestCheck]);
+
+  // Group items by category for normal view
   const grouped = useMemo(() => {
-    const map = new Map<string, Item[]>();
+    const map = new Map<string, { categoryId: number; items: Item[] }>();
     for (const item of items) {
       const cat = item.categoryName ?? 'Other';
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(item);
+      if (!map.has(cat)) map.set(cat, { categoryId: item.categoryId, items: [] });
+      map.get(cat)!.items.push(item);
     }
     return map;
   }, [items]);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
 
+  // Inventory check phase — render check mode UI
+  if (checkPhase === 'checking') {
+    return (
+      <InventoryCheckMode
+        items={checkItems}
+        onFinish={handleFinishCheck}
+        onCancel={() => setCheckPhase('idle')}
+      />
+    );
+  }
+
+  // Summary phase — still show normal view underneath, modal on top
+  const uncheckedItems = checkPhase === 'summary'
+    ? checkItems.filter((i) => !checkedIds.has(i.id))
+    : [];
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="shrink-0 bg-white border-b border-gray-100 safe-top">
-        <div className="flex items-center px-4 pt-4 pb-2 gap-2">
-          <Snowflake className="w-6 h-6 text-blue-500" />
-          <h1 className="text-xl font-bold text-gray-900">FreezerStock</h1>
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <div className="flex items-center gap-2">
+            <Snowflake className="w-6 h-6 text-blue-500" />
+            <h1 className="text-xl font-bold text-gray-900">FreezerStock</h1>
+          </div>
+          <button
+            onClick={handleStartCheck}
+            aria-label="Check inventory"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          >
+            <ClipboardCheck className="w-5 h-5" />
+          </button>
         </div>
+
+        {/* Last checked indicator */}
+        {lastCheckedLabel && !search && (
+          <div className="px-4 pb-1">
+            <span className={`text-xs font-medium ${lastCheckedLabel.aged ? 'text-amber-500' : 'text-gray-400'}`}>
+              {lastCheckedLabel.label}
+            </span>
+          </div>
+        )}
+        {!latestCheck && !search && (
+          <div className="px-4 pb-1">
+            <span className="text-xs text-gray-400">Inventory never checked</span>
+          </div>
+        )}
 
         {/* Search */}
         <div className="px-4 pb-3">
@@ -149,16 +265,18 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
                 {items.length} item type{items.length !== 1 ? 's' : ''} · {totalItems} total
               </div>
             )}
-            {Array.from(grouped.entries()).map(([catName, catItems]) => (
+            {Array.from(grouped.entries()).map(([catName, { categoryId, items: catItems }]) => (
               <CategoryGroup
                 key={catName}
                 categoryName={catName}
+                categoryId={categoryId}
                 items={catItems}
                 onUse={(id) => {
                   const item = items.find((i) => i.id === id);
                   if (item) useMut.mutate({ item, amount: 1 });
                 }}
                 onEdit={setEditItem}
+                onQuickAdd={handleQuickAdd}
                 defaultOpen={!search || grouped.size === 1}
               />
             ))}
@@ -172,15 +290,31 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
         <AddItemModal
           categories={categories}
           onSave={(data) => addMutation.mutate(data)}
-          onClose={() => setShowAdd(false)}
+          onClose={() => {
+            setShowAdd(false);
+            setQuickAddCategoryId(undefined);
+            setQuickAddSubcategoryId(undefined);
+          }}
+          initialCategoryId={quickAddCategoryId}
+          initialSubcategoryId={quickAddSubcategoryId}
         />
       )}
       {editItem && (
         <EditItemModal
           item={editItem}
+          categories={categories}
           onSave={(id, data) => updateMut.mutate({ id, data })}
           onDelete={(id) => deleteMut.mutate(id)}
           onClose={() => setEditItem(null)}
+        />
+      )}
+
+      {/* Check summary modal */}
+      {checkPhase === 'summary' && (
+        <CheckSummaryModal
+          uncheckedItems={uncheckedItems}
+          onComplete={handleCompleteCheck}
+          onCancel={() => setCheckPhase('checking')}
         />
       )}
 
