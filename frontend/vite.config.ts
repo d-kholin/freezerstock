@@ -15,19 +15,6 @@ export default defineConfig({
         // API requests, leaving TanStack Query with empty data on first open.
         clientsClaim: false,
         navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [
-          {
-            // urlPattern must be a function for same-origin paths — a /^\/api\// regex
-            // is tested against the full absolute URL and never matches.
-            urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 5,
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
       },
       manifest: {
         name: 'FreezerStock',
