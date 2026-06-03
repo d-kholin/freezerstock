@@ -38,7 +38,7 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
     queryFn: api.getCategories,
   });
 
-  const { data: items = [], isLoading } = useQuery({
+  const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['items', search],
     queryFn: () => api.getItems(search || undefined),
   });
@@ -254,6 +254,16 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-gray-400">Loading...</div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center h-48 gap-3 px-8 text-center">
+            <p className="font-medium text-gray-500">Couldn't load your inventory</p>
+            <button
+              onClick={() => refetch()}
+              className="text-sm text-blue-600 underline"
+            >
+              Retry
+            </button>
+          </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3 text-gray-400 px-8 text-center">
             <Snowflake className="w-12 h-12 text-gray-200" />

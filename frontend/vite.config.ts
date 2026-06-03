@@ -10,9 +10,16 @@ export default defineConfig({
       injectRegister: 'auto',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Prevent SW from claiming the current page mid-load on iOS standalone mode.
+        // Without this, clients.claim() fires during activation and cancels in-flight
+        // API requests, leaving TanStack Query with empty data on first open.
+        clientsClaim: false,
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\//,
+            // urlPattern must be a function for same-origin paths — a /^\/api\// regex
+            // is tested against the full absolute URL and never matches.
+            urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
