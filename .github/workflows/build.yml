@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - dev
+    tags:
+      - 'v*'
 
 env:
   REGISTRY: ghcr.io
@@ -25,7 +27,9 @@ jobs:
       - name: Set image tag
         id: tag
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_name }}" = "main" ]; then
             echo "tag=latest" >> $GITHUB_OUTPUT
           else
             echo "tag=nightly" >> $GITHUB_OUTPUT
