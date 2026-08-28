@@ -1,4 +1,4 @@
-import type { Category, Item, HistoryEntry, UseItemResult, InventoryCheck, Subcategory } from '../types';
+import type { Category, Item, HistoryEntry, UseItemResult, InventoryCheck, Subcategory, UsageReport } from '../types';
 
 const BASE = '/api';
 
@@ -58,6 +58,10 @@ export const api = {
     request<HistoryEntry[]>(`/history${limit ? `?limit=${limit}` : ''}`),
   restoreHistory: (id: number) =>
     request<{ restored: string; historyId: number }>(`/history/${id}/restore`, { method: 'POST' }),
+
+  // Reports
+  getUsageReport: (days: number) =>
+    request<UsageReport>(`/reports/usage?days=${days}`),
 
   // Inventory checks
   getLatestInventoryCheck: () =>

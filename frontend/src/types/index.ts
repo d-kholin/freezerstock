@@ -76,6 +76,20 @@ export interface UseItemResult {
   snapshot?: ItemSnapshot;
 }
 
+export interface UsageReportItem {
+  itemName: string;
+  categoryName: string | null;
+  quantityUsed: number;
+  useCount: number;
+  lastUsedAt: string;
+}
+
+export interface UsageReport {
+  days: number;
+  totalUsed: number;
+  items: UsageReportItem[];
+}
+
 export interface InventoryCheck {
   id: number;
   completedAt: string;

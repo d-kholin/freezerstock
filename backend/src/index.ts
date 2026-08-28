@@ -8,6 +8,7 @@ import categoriesRouter from './routes/categories';
 import itemsRouter from './routes/items';
 import historyRouter from './routes/history';
 import inventoryChecksRouter from './routes/inventoryChecks';
+import reportsRouter from './routes/reports';
 import { registerRealtimeServer } from './realtime';
 
 const app = express();
@@ -28,6 +29,7 @@ app.use('/api/item-types', (req, res, next) => {
 app.use('/api/items', itemsRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/inventory-checks', inventoryChecksRouter);
+app.use('/api/reports', reportsRouter);
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 async function main() {

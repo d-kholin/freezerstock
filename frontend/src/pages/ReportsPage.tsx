@@ -57,9 +57,16 @@ function StatCard({ label, count, total, color }: StatCardProps) {
   );
 }
 
+const USAGE_PERIODS = [
+  { label: '30 days', days: 30 },
+  { label: '6 months', days: 183 },
+  { label: 'Year', days: 365 },
+];
+
 export default function ReportsPage() {
   const qc = useQueryClient();
   const [editItem, setEditItem] = useState<Item | null>(null);
+  const [usageDays, setUsageDays] = useState(30);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['items'],
@@ -71,7 +78,17 @@ export default function ReportsPage() {
     queryFn: api.getCategories,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['items'] });
+  // 'history' prefix keeps the usage report in sync — realtime history.changed
+  // events and local mutations both invalidate it.
+  const { data: usage } = useQuery({
+    queryKey: ['history', 'usage', usageDays],
+    queryFn: () => api.getUsageReport(usageDays),
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['items'] });
+    qc.invalidateQueries({ queryKey: ['history'] });
+  };
 
   const useMut = useMutation({
     mutationFn: (item: Item) => api.useItem(item.id, 1),
@@ -233,6 +250,56 @@ export default function ReportsPage() {
                 </div>
               ))}
             </div>
+          )}
+        </section>
+
+        {/* Usage */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Usage</h2>
+            <div className="flex gap-1">
+              {USAGE_PERIODS.map(({ label, days }) => (
+                <button
+                  key={days}
+                  onClick={() => setUsageDays(days)}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+                    usageDays === days
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {!usage || usage.items.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">
+              {usage ? 'Nothing used in this period' : 'Loading...'}
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-gray-500 mb-2">
+                <span className="font-semibold text-gray-800">{usage.totalUsed}</span>
+                {usage.totalUsed === 1 ? ' item' : ' items'} used across{' '}
+                <span className="font-semibold text-gray-800">{usage.items.length}</span>
+                {usage.items.length === 1 ? ' type' : ' types'}
+              </p>
+              <div className="rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
+                {usage.items.map((u) => (
+                  <div key={`${u.itemName}|${u.categoryName}`} className="flex items-center px-4 py-3 gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 truncate">{u.itemName}</div>
+                      <div className="text-sm text-gray-500">
+                        {u.categoryName ?? 'Other'}
+                        {u.useCount > 1 && ` · ${u.useCount} uses`}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold text-gray-800">×{u.quantityUsed}</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </section>
 
