@@ -6,7 +6,12 @@ import './index.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1 },
+    // networkMode 'always': iOS standalone PWAs can report navigator.onLine === false
+    // after resume and never fire the corrective 'online' event, which leaves queries
+    // paused forever (isLoading false, data undefined → UI renders as empty inventory).
+    // Always attempt the fetch; a real network failure surfaces as an error with Retry.
+    queries: { staleTime: 30_000, retry: 1, networkMode: 'always' },
+    mutations: { networkMode: 'always' },
   },
 });
 
