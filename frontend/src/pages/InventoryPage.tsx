@@ -390,6 +390,9 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
             >
               Retry
             </button>
+            <a href="/api/app-recovery" className="text-sm text-gray-500 underline">
+              Refresh saved app files
+            </a>
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3 text-gray-400 px-8 text-center">

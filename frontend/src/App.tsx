@@ -5,6 +5,7 @@ import InventoryPage from './pages/InventoryPage';
 import HistoryPage from './pages/HistoryPage';
 import ReportsPage from './pages/ReportsPage';
 import useRealtimeSync from './realtime/useRealtimeSync';
+import PwaUpdatePrompt from './components/PwaUpdatePrompt';
 
 function AppShell() {
   const [showAdd, setShowAdd] = useState(false);
@@ -19,6 +20,7 @@ function AppShell() {
 
   return (
     <div className="flex flex-col h-dvh w-full max-w-6xl mx-auto bg-white shadow-xl">
+      <PwaUpdatePrompt />
       {/* Main content area */}
       <main className="flex-1 overflow-hidden flex flex-col">
         <Routes>

@@ -10,10 +10,10 @@ export default defineConfig({
       // 'auto' force-overrides skipWaiting/clientsClaim to true inside the plugin,
       // producing a SW that seizes control of already-open pages mid-session and
       // cancels in-flight API requests on iOS standalone. With 'prompt' the options
-      // below are respected and a new SW simply waits; updates apply on the next
-      // cold open after all pages of the old version are closed.
+      // below are respected and the app lets the user choose when to reload.
       registerType: 'prompt',
-      injectRegister: 'auto',
+      // Registration is handled by the app so users can accept a waiting update.
+      injectRegister: null,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         clientsClaim: false,

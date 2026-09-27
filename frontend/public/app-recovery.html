@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Refresh FreezerStock</title>
+    <style>
+      body { font: 16px system-ui, sans-serif; margin: 0; padding: 24px; color: #111827; }
+      main { max-width: 28rem; margin: 4rem auto; }
+      button { min-height: 48px; padding: 0 20px; border: 0; border-radius: 8px; color: white; background: #2563eb; font: inherit; }
+      p { line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Refresh FreezerStock</h1>
+      <p>This clears the app's saved offline files and loads the current version. Your freezer inventory stays on the server.</p>
+      <button id="reset" type="button">Refresh app</button>
+      <p id="status" role="status"></p>
+    </main>
+    <script>
+      document.getElementById('reset').addEventListener('click', async () => {
+        const button = document.getElementById('reset');
+        const status = document.getElementById('status');
+        button.disabled = true;
+        status.textContent = 'Clearing old app files…';
+        try {
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((registration) => registration.unregister()));
+          }
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((key) => caches.delete(key)));
+          }
+          location.replace('/?refreshed=' + Date.now());
+        } catch {
+          status.textContent = 'Could not clear the saved files. Please try again.';
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
