@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
-import { Archive, History, BarChart2, Plus } from 'lucide-react';
+import { Archive, History, BarChart2, Plus, Settings } from 'lucide-react';
 import InventoryPage from './pages/InventoryPage';
 import HistoryPage from './pages/HistoryPage';
 import ReportsPage from './pages/ReportsPage';
@@ -77,6 +77,13 @@ function AppShell() {
           <History className="w-6 h-6" />
           History
         </NavLink>
+        <a
+          href="/api/app-recovery"
+          className="flex-1 flex flex-col items-center justify-center py-2 gap-1 text-xs font-medium text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+        >
+          <Settings className="w-6 h-6" />
+          Settings
+        </a>
       </nav>
     </div>
   );
