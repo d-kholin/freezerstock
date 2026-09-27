@@ -61,7 +61,8 @@ export async function runMigrations() {
         frozen_date TEXT NOT NULL,
         notes TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        last_checked_at TEXT
       )`,
       args: [],
     },
@@ -94,6 +95,7 @@ export async function runMigrations() {
     'ALTER TABLE history ADD COLUMN category_name TEXT',
     'ALTER TABLE item_types ADD COLUMN subcategory_id INTEGER REFERENCES subcategories(id)',
     'ALTER TABLE items ADD COLUMN subcategory_id INTEGER REFERENCES subcategories(id)',
+    'ALTER TABLE items ADD COLUMN last_checked_at TEXT',
   ];
 
   for (const stmt of alterations) {

@@ -66,6 +66,23 @@ router.post('/:id/restore', async (req, res) => {
       return res.json({ restored: 'added', historyId });
     }
 
+    if (entry.action === 'adjusted') {
+      if (!entry.itemId || !entry.details) {
+        return res.status(409).json({ error: 'Adjustment cannot be restored' });
+      }
+      const details = JSON.parse(entry.details) as { previousQuantity?: number; newQuantity?: number };
+      const [existing] = await db.select().from(items).where(eq(items.id, entry.itemId));
+      if (!existing || !Number.isSafeInteger(details.previousQuantity) || details.previousQuantity! < 1 ||
+          existing.quantity !== details.newQuantity) {
+        return res.status(409).json({ error: 'Item changed since this adjustment; undo is unavailable' });
+      }
+      await db.update(items).set({ quantity: details.previousQuantity, updatedAt: new Date().toISOString() }).where(eq(items.id, entry.itemId));
+      await db.delete(history).where(eq(history.id, historyId));
+      broadcastRealtime('items.changed');
+      broadcastRealtime('history.changed');
+      return res.json({ restored: 'adjusted', historyId });
+    }
+
     if (entry.action === 'removed') {
       const snapshot = parseSnapshot(entry.details);
       if (!snapshot) {

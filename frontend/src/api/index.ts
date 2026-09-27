@@ -39,8 +39,8 @@ export const api = {
   }) => request<Item>('/items', { method: 'POST', body: JSON.stringify(data) }),
   updateItem: (id: number, data: Partial<{
     quantity: number;
-    sizeLabel: string;
-    notes: string;
+    sizeLabel: string | null;
+    notes: string | null;
     frozenDate: string;
     categoryId: number;
     subcategoryId: number | null;
@@ -68,9 +68,13 @@ export const api = {
     request<InventoryCheck | null>('/inventory-checks/latest'),
   startInventoryCheck: () =>
     request<{ items: Item[] }>('/inventory-checks/start', { method: 'POST' }),
-  completeInventoryCheck: (checkedItemIds: number[], removals: number[]) =>
+  completeInventoryCheck: (checkedItemIds: number[], removals: number[], quantityAdjustments: {
+    itemId: number;
+    quantity: number;
+    expectedQuantity: number;
+  }[]) =>
     request<InventoryCheck>('/inventory-checks/complete', {
       method: 'POST',
-      body: JSON.stringify({ checkedItemIds, removals }),
+      body: JSON.stringify({ checkedItemIds, removals, quantityAdjustments }),
     }),
 };

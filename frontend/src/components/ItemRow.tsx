@@ -73,6 +73,11 @@ export default function ItemRow({ item, onUse, onEdit }: Props) {
         {item.notes && (
           <p className="text-xs text-gray-400 mt-0.5 truncate">{item.notes}</p>
         )}
+        <p className="text-xs text-gray-400 mt-0.5">
+          {item.lastCheckedAt
+            ? `Last checked ${new Date(item.lastCheckedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            : 'Never checked'}
+        </p>
       </div>
 
       {/* Actions menu button */}

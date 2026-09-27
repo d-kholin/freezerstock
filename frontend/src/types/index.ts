@@ -36,6 +36,7 @@ export interface Item {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  lastCheckedAt: string | null;
   // Joined fields
   categoryName?: string;
   subcategoryName?: string | null;
@@ -45,7 +46,7 @@ export interface Item {
 
 export interface HistoryEntry {
   id: number;
-  action: 'used' | 'removed' | 'processed' | 'added';
+  action: 'used' | 'removed' | 'processed' | 'added' | 'adjusted';
   itemId: number | null;
   itemName: string;
   categoryName: string | null;

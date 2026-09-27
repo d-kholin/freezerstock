@@ -13,7 +13,7 @@ interface Props {
     sizeLabel?: string;
     frozenDate: string;
     notes?: string;
-  }) => void;
+  }) => Promise<void>;
   onCreateCategory: (name: string) => Promise<Category>;
   onCreateSubcategory: (categoryId: number, name: string) => Promise<{ id: number }>;
   onClose: () => void;
@@ -47,6 +47,7 @@ export default function AddItemModal({
   const [frozenDate, setFrozenDate] = useState(currentYearMonth());
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const selectedCategory = useMemo(
     () => (typeof categoryId === 'number' ? categories.find((c) => c.id === categoryId) : undefined),
@@ -114,9 +115,9 @@ export default function AddItemModal({
       }
 
       // 3. Save the item
-      const shouldUseCustomName = categoryId === 'new' || itemTypeId === 'custom';
+      const shouldUseCustomName = categoryId === 'new' || subcategoryId === 'new' || itemTypeId === 'custom';
 
-      onSave({
+      await onSave({
         categoryId: resolvedCategoryId,
         subcategoryId: resolvedSubcategoryId,
         itemTypeId: itemTypeId && itemTypeId !== 'custom' ? Number(itemTypeId) : undefined,
@@ -126,6 +127,8 @@ export default function AddItemModal({
         frozenDate,
         notes: notes.trim() || undefined,
       });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not add item');
     } finally {
       setSubmitting(false);
     }
@@ -135,9 +138,9 @@ export default function AddItemModal({
   const inputClass = 'w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 md:items-center md:justify-center md:p-6" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl max-h-[92dvh] flex flex-col"
+        className="bg-white rounded-t-2xl max-h-[92dvh] flex flex-col md:w-full md:max-w-xl md:rounded-2xl md:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -278,7 +281,7 @@ export default function AddItemModal({
           )}
 
           {/* Custom name when existing category + Custom... selected */}
-          {itemTypeId === 'custom' && categoryId !== 'new' && (
+          {(itemTypeId === 'custom' || subcategoryId === 'new') && categoryId !== 'new' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name</label>
               <input
@@ -348,6 +351,7 @@ export default function AddItemModal({
             />
           </div>
 
+          {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
           <button
             type="submit"
             disabled={submitting}
