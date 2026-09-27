@@ -32,6 +32,8 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   const [checkPhase, setCheckPhase] = useState<CheckPhase>('idle');
   const [checkItems, setCheckItems] = useState<Item[]>([]);
   const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set());
+  const [checkedQuantities, setCheckedQuantities] = useState<Record<number, number>>({});
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -108,15 +110,21 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
   });
 
   const completeCheckMut = useMutation({
-    mutationFn: ({ checkedItemIds, removals }: { checkedItemIds: number[]; removals: number[] }) =>
-      api.completeInventoryCheck(checkedItemIds, removals),
+    mutationFn: ({ checkedItemIds, removals, quantityAdjustments }: {
+      checkedItemIds: number[];
+      removals: number[];
+      quantityAdjustments: { itemId: number; quantity: number; expectedQuantity: number }[];
+    }) => api.completeInventoryCheck(checkedItemIds, removals, quantityAdjustments),
     onSuccess: () => {
       invalidate();
       qc.invalidateQueries({ queryKey: ['inventory-check-latest'] });
       setCheckPhase('idle');
       setCheckItems([]);
       setCheckedIds(new Set());
+      setCheckedQuantities({});
+      setCheckError(null);
     },
+    onError: (err: Error) => setCheckError(err.message),
   });
 
   const handleUndo = (t: ToastData) => {
@@ -134,35 +142,115 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
       const result = await api.startInventoryCheck();
       setCheckItems(result.items);
       setCheckedIds(new Set());
+      setCheckedQuantities({});
+      setCheckError(null);
       setCheckPhase('checking');
     } catch {
       // silently fail — user stays on normal view
     }
   };
 
-  const handleFinishCheck = (checked: Set<number>) => {
-    setCheckedIds(checked);
-    setCheckPhase('summary');
+  const handleCancelCheck = () => {
+    setCheckPhase('idle');
+    setCheckItems([]);
+    setCheckedIds(new Set());
+    setCheckedQuantities({});
+    setCheckError(null);
+  };
+
+  const handleToggleChecked = (id: number) => {
+    setCheckedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCountChange = (id: number, quantity: number) => {
+    if (Number.isSafeInteger(quantity) && quantity >= 0) {
+      setCheckedQuantities((previous) => ({ ...previous, [id]: quantity }));
+    }
+  };
+
+  const quantityAdjustments = () => checkItems
+    .filter((item) => checkedIds.has(item.id) && checkedQuantities[item.id] !== undefined && checkedQuantities[item.id] !== item.quantity)
+    .map((item) => ({ itemId: item.id, quantity: checkedQuantities[item.id], expectedQuantity: item.quantity }));
+
+  const handleSavePartial = () => {
+    completeCheckMut.mutate({
+      checkedItemIds: Array.from(checkedIds),
+      removals: [],
+      quantityAdjustments: quantityAdjustments(),
+    });
   };
 
   const handleCompleteCheck = (removals: number[]) => {
     completeCheckMut.mutate({
       checkedItemIds: Array.from(checkedIds),
       removals,
+      quantityAdjustments: quantityAdjustments(),
     });
+  };
+
+  const handleAddSave = async (data: Parameters<typeof api.createItem>[0]) => {
+    const created = await addMutation.mutateAsync(data);
+    if (checkPhase === 'checking') {
+      try {
+        const refreshed = await api.startInventoryCheck();
+        setCheckItems(refreshed.items);
+        setCheckedIds((previous) => new Set(previous).add(created.id));
+        setCheckedQuantities((previous) => ({ ...previous, [created.id]: created.quantity }));
+      } catch {
+        setCheckError('Item added, but the check list could not refresh. Restart the check to see it.');
+      }
+    }
+  };
+
+  const handleEditSave = async (id: number, data: Parameters<typeof api.updateItem>[1]) => {
+    const previousQuantity = checkItems.find((item) => item.id === id)?.quantity;
+    const updated = await updateMut.mutateAsync({ id, data });
+    if (checkPhase === 'checking') {
+      if (previousQuantity !== undefined && updated.quantity !== previousQuantity) {
+        setCheckedQuantities((previous) => ({ ...previous, [id]: updated.quantity }));
+      }
+      try {
+        const refreshed = await api.startInventoryCheck();
+        setCheckItems(refreshed.items);
+      } catch {
+        setCheckError('Item saved, but the check list could not refresh. Restart the check to see it.');
+      }
+    }
+  };
+
+  const handleEditDelete = async (id: number) => {
+    try {
+      await deleteMut.mutateAsync(id);
+      if (checkPhase === 'checking') {
+        const refreshed = await api.startInventoryCheck();
+        setCheckItems(refreshed.items);
+        setCheckedIds((previous) => { const next = new Set(previous); next.delete(id); return next; });
+        setCheckedQuantities((previous) => { const next = { ...previous }; delete next[id]; return next; });
+      }
+    } catch (err) {
+      setCheckError(err instanceof Error ? err.message : 'Could not remove item');
+    }
   };
 
   // Last-checked display
   const lastCheckedLabel = useMemo(() => {
     if (!latestCheck) return null;
-    const ms = Date.now() - new Date(latestCheck.completedAt).getTime();
-    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-    if (days === 0) return { label: 'Checked today', aged: false };
-    if (days === 1) return { label: 'Checked yesterday', aged: false };
-    if (days < 30) return { label: `Checked ${days}d ago`, aged: false };
+    const completedAt = latestCheck.completedAt.includes('T')
+      ? latestCheck.completedAt
+      : `${latestCheck.completedAt.replace(' ', 'T')}Z`;
+    const ms = Date.now() - new Date(completedAt).getTime();
+    const days = Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+    if (days === 0) return { label: 'Latest check today', aged: false };
+    if (days === 1) return { label: 'Latest check yesterday', aged: false };
+    if (days < 30) return { label: `Latest check ${days}d ago`, aged: false };
     const weeks = Math.floor(days / 7);
-    if (weeks < 8) return { label: `Checked ${weeks}w ago`, aged: days > 30 };
-    return { label: `Checked ${Math.floor(days / 30)}mo ago`, aged: true };
+    if (weeks < 8) return { label: `Latest check ${weeks}w ago`, aged: days > 30 };
+    return { label: `Latest check ${Math.floor(days / 30)}mo ago`, aged: true };
   }, [latestCheck]);
 
   // Group items by category for normal view
@@ -178,14 +266,53 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
 
+  const addModal = showAdd && (
+    <AddItemModal
+      categories={categories}
+      onSave={handleAddSave}
+      onCreateCategory={(name) => createCategoryMut.mutateAsync(name)}
+      onCreateSubcategory={(categoryId, name) => createSubcategoryMut.mutateAsync({ categoryId, name })}
+      onClose={() => {
+        setShowAdd(false);
+        setQuickAddCategoryId(undefined);
+        setQuickAddSubcategoryId(undefined);
+      }}
+      initialCategoryId={quickAddCategoryId}
+      initialSubcategoryId={quickAddSubcategoryId}
+    />
+  );
+
   // Inventory check phase — render check mode UI
   if (checkPhase === 'checking') {
     return (
+      <>
       <InventoryCheckMode
         items={checkItems}
-        onFinish={handleFinishCheck}
-        onCancel={() => setCheckPhase('idle')}
+        checkedIds={checkedIds}
+        quantities={checkedQuantities}
+        onToggle={handleToggleChecked}
+        onQuantityChange={handleCountChange}
+        onCheckAll={() => setCheckedIds(new Set(checkItems.map((item) => item.id)))}
+        onUncheckAll={() => setCheckedIds(new Set())}
+        onFinish={() => setCheckPhase('summary')}
+        onSavePartial={handleSavePartial}
+        onAddItem={() => setShowAdd(true)}
+        onEditItem={setEditItem}
+        error={checkError}
+        saving={completeCheckMut.isPending}
+        onCancel={handleCancelCheck}
       />
+      {addModal}
+      {editItem && (
+        <EditItemModal
+          item={editItem}
+          categories={categories}
+          onSave={handleEditSave}
+          onDelete={handleEditDelete}
+          onClose={() => setEditItem(null)}
+        />
+      )}
+      </>
     );
   }
 
@@ -251,7 +378,7 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
       </div>
 
       {/* Item list */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto md:bg-gray-50 md:px-5 md:py-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-gray-400">Loading...</div>
         ) : items.length === 0 ? (
@@ -280,6 +407,7 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
                 {items.length} item type{items.length !== 1 ? 's' : ''} · {totalItems} total
               </div>
             )}
+            <div className="md:grid md:grid-cols-2 md:items-start md:gap-4">
             {Array.from(grouped.entries()).map(([catName, { categoryId, items: catItems }]) => (
               <CategoryGroup
                 key={catName}
@@ -295,46 +423,34 @@ export default function InventoryPage({ showAdd, setShowAdd }: Props) {
                 defaultOpen={!search || grouped.size === 1}
               />
             ))}
+            </div>
             <div className="h-4" />
           </>
         )}
       </div>
 
       {/* Modals */}
-      {showAdd && (
-        <AddItemModal
-          categories={categories}
-          onSave={(data) => addMutation.mutate(data)}
-          onCreateCategory={(name) => createCategoryMut.mutateAsync(name)}
-          onCreateSubcategory={(categoryId, name) =>
-            createSubcategoryMut.mutateAsync({ categoryId, name })
-          }
-          onClose={() => {
-            setShowAdd(false);
-            setQuickAddCategoryId(undefined);
-            setQuickAddSubcategoryId(undefined);
-          }}
-          initialCategoryId={quickAddCategoryId}
-          initialSubcategoryId={quickAddSubcategoryId}
-        />
-      )}
+      {addModal}
       {editItem && (
         <EditItemModal
           item={editItem}
           categories={categories}
-          onSave={(id, data) => updateMut.mutate({ id, data })}
-          onDelete={(id) => deleteMut.mutate(id)}
+          onSave={handleEditSave}
+          onDelete={handleEditDelete}
           onClose={() => setEditItem(null)}
         />
       )}
 
       {/* Check summary modal */}
       {checkPhase === 'summary' && (
+        <>
+        {checkError && <div role="alert" className="fixed z-[60] top-4 left-4 right-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{checkError}</div>}
         <CheckSummaryModal
           uncheckedItems={uncheckedItems}
           onComplete={handleCompleteCheck}
           onCancel={() => setCheckPhase('checking')}
         />
+        </>
       )}
 
       {/* Use toast */}

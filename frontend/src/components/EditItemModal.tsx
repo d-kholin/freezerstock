@@ -5,7 +5,7 @@ import type { Category, Item, Subcategory } from '../types';
 interface Props {
   item: Item;
   categories: Category[];
-  onSave: (id: number, data: Parameters<typeof import('../api').api.updateItem>[1]) => void;
+  onSave: (id: number, data: Parameters<typeof import('../api').api.updateItem>[1]) => Promise<void>;
   onDelete: (id: number) => void;
   onClose: () => void;
 }
@@ -14,7 +14,7 @@ export default function EditItemModal({ item, categories, onSave, onDelete, onCl
   // Classification state — initialised from the item being edited
   const [categoryId, setCategoryId] = useState<number>(item.categoryId);
   const [subcategoryId, setSubcategoryId] = useState<number | null>(item.subcategoryId ?? null);
-  const [itemTypeId, setItemTypeId] = useState<number | 'custom' | null>(item.itemTypeId ?? null);
+  const [itemTypeId, setItemTypeId] = useState<number | 'custom' | null>(item.itemTypeId ?? (item.customName ? 'custom' : null));
   const [customName, setCustomName] = useState(item.customName ?? '');
 
   // Detail state
@@ -23,6 +23,8 @@ export default function EditItemModal({ item, categories, onSave, onDelete, onCl
   const [notes, setNotes] = useState(item.notes ?? '');
   const [frozenDate, setFrozenDate] = useState(item.frozenDate);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === categoryId),
@@ -45,40 +47,51 @@ export default function EditItemModal({ item, categories, onSave, onDelete, onCl
   const handleCategoryChange = (id: number) => {
     setCategoryId(id);
     setSubcategoryId(null);
-    setItemTypeId(null);
-    setCustomName('');
+    if (itemTypeId !== 'custom') {
+      setItemTypeId(null);
+      setCustomName('');
+    }
   };
 
   const handleSubcategoryChange = (id: number | null) => {
     setSubcategoryId(id);
-    setItemTypeId(null);
+    if (itemTypeId !== 'custom') setItemTypeId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
 
     const isCustom = itemTypeId === 'custom';
     if (isCustom && !customName.trim()) return;
     if (!isCustom && !itemTypeId) return;
 
-    onSave(item.id, {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(item.id, {
       categoryId,
       subcategoryId,
       itemTypeId: isCustom ? null : (itemTypeId as number),
       customName: isCustom ? customName.trim() : null,
       quantity,
-      sizeLabel: sizeLabel.trim() || undefined,
-      notes: notes.trim() || undefined,
+      sizeLabel: sizeLabel.trim() || null,
+      notes: notes.trim() || null,
       frozenDate,
-    });
+      });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save item');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectClass = 'w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 md:items-center md:justify-center md:p-6" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl max-h-[92dvh] flex flex-col"
+        className="bg-white rounded-t-2xl max-h-[92dvh] flex flex-col md:w-full md:max-w-xl md:rounded-2xl md:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
@@ -229,11 +242,13 @@ export default function EditItemModal({ item, categories, onSave, onDelete, onCl
             />
           </div>
 
+          {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white font-semibold rounded-xl py-3.5 hover:bg-blue-700 active:bg-blue-800 transition-colors min-h-[44px]"
+            disabled={saving}
+            className="w-full bg-blue-600 text-white font-semibold rounded-xl py-3.5 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:opacity-40 min-h-[44px]"
           >
-            Save Changes
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
 
           {/* Delete */}

@@ -40,6 +40,7 @@ export const items = sqliteTable('items', {
   // store: text('store'),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
   updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+  lastCheckedAt: text('last_checked_at'),
 });
 
 export const history = sqliteTable('history', {

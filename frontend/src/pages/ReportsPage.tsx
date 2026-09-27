@@ -131,9 +131,9 @@ export default function ReportsPage() {
         <h1 className="text-xl font-bold text-gray-900">Reports</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 md:grid md:grid-cols-2 md:items-start md:gap-6 md:space-y-0">
         {/* Age Summary */}
-        <section>
+        <section className="md:col-span-2">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Age Summary</h2>
           <div className="flex gap-2">
             <StatCard label="Fresh" count={fresh.length} total={totalQty(fresh)} color="green" />
@@ -243,7 +243,7 @@ export default function ReportsPage() {
         <EditItemModal
           item={editItem}
           categories={categories}
-          onSave={(id, data) => updateMut.mutate({ id, data })}
+          onSave={async (id, data) => { await updateMut.mutateAsync({ id, data }); }}
           onDelete={(id) => deleteMut.mutate(id)}
           onClose={() => setEditItem(null)}
         />

@@ -53,7 +53,7 @@ export default function CategoryGroup({
   };
 
   return (
-    <div className="mb-2">
+    <div className="mb-2 md:mb-0 md:overflow-hidden md:rounded-2xl md:border md:border-gray-200 md:shadow-sm">
       {/* Category header */}
       <div className="flex items-center bg-gray-100">
         <button

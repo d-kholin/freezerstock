@@ -37,8 +37,8 @@ export default function CheckSummaryModal({ uncheckedItems, onComplete, onCancel
   if (uncheckedItems.length === 0) {
     // All items were checked — nothing to review
     return (
-      <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40">
-        <div className="bg-white rounded-t-2xl p-6 flex flex-col items-center gap-4">
+      <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 md:items-center md:justify-center md:p-6">
+        <div className="bg-white rounded-t-2xl p-6 flex flex-col items-center gap-4 md:w-full md:max-w-xl md:rounded-2xl">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
             <Check className="w-8 h-8 text-green-600" />
           </div>
@@ -56,8 +56,8 @@ export default function CheckSummaryModal({ uncheckedItems, onComplete, onCancel
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40">
-      <div className="bg-white rounded-t-2xl max-h-[88dvh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 md:items-center md:justify-center md:p-6">
+      <div className="bg-white rounded-t-2xl max-h-[88dvh] flex flex-col md:w-full md:max-w-xl md:rounded-2xl">
         {/* Header */}
         <div className="shrink-0 px-4 pt-4 pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">

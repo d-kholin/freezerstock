@@ -18,7 +18,7 @@ function AppShell() {
   };
 
   return (
-    <div className="flex flex-col h-dvh max-w-lg mx-auto bg-white shadow-xl">
+    <div className="flex flex-col h-dvh w-full max-w-6xl mx-auto bg-white shadow-xl">
       {/* Main content area */}
       <main className="flex-1 overflow-hidden flex flex-col">
         <Routes>

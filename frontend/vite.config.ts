@@ -43,11 +43,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api/ws': {
-        target: 'ws://backend:3001',
+        target: process.env.API_PROXY_TARGET?.replace(/^http/, 'ws') || 'ws://backend:3001',
         ws: true,
       },
       '/api': {
-        target: 'http://backend:3001',
+        target: process.env.API_PROXY_TARGET || 'http://backend:3001',
         changeOrigin: true,
       },
     },

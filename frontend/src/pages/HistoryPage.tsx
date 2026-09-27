@@ -5,6 +5,7 @@ import { api } from '../api';
 import type { HistoryEntry } from '../types';
 
 function ActionIcon({ action }: { action: HistoryEntry['action'] }) {
+  if (action === 'adjusted') return <PackageMinus className="w-5 h-5 text-blue-500" />;
   if (action === 'added') return <PackagePlus className="w-5 h-5 text-green-500" />;
   if (action === 'removed') return <Trash2 className="w-5 h-5 text-orange-500" />;
   if (action === 'processed') return <Scissors className="w-5 h-5 text-purple-500" />;
@@ -12,6 +13,7 @@ function ActionIcon({ action }: { action: HistoryEntry['action'] }) {
 }
 
 function actionLabel(action: HistoryEntry['action']) {
+  if (action === 'adjusted') return 'Adjusted';
   if (action === 'added') return 'Added';
   if (action === 'removed') return 'Removed';
   if (action === 'processed') return 'Processed';
@@ -50,7 +52,7 @@ export default function HistoryPage() {
   });
 
   const canRestore = (action: HistoryEntry['action']) =>
-    action === 'used' || action === 'removed' || action === 'added';
+    action === 'used' || action === 'removed' || action === 'added' || action === 'adjusted';
 
   return (
     <div className="flex flex-col h-full">
@@ -89,7 +91,9 @@ export default function HistoryPage() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
                       className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                        entry.action === 'added'
+                        entry.action === 'adjusted'
+                          ? 'bg-blue-50 text-blue-600'
+                          : entry.action === 'added'
                           ? 'bg-green-50 text-green-600'
                           : entry.action === 'removed'
                           ? 'bg-orange-50 text-orange-600'
